@@ -8,7 +8,7 @@ Multi-language SDK monorepo for [NurseAndrea](https://nurseandrea.io) observabil
 |---------|----------|--------|----------|
 | `packages/node` | Node.js | `0.1.0` — in development | `nurse-andrea` (npm) |
 | `packages/python` | Python | `0.1.0` — in development | `nurse-andrea` (PyPI) |
-| `packages/go` | Go | Planned — Sprint 2.7 | `nurse-andrea-go` |
+| `packages/go` | Go | `0.1.0` — in development | `nurse-andrea-go` (pkg.go.dev) |
 
 ## Two-variable contract
 
