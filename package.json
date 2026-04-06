@@ -1,0 +1,12 @@
+{
+  "name": "nurse-andrea-sdks",
+  "private": true,
+  "workspaces": [
+    "packages/node"
+  ],
+  "scripts": {
+    "test": "npm test --workspace=packages/node",
+    "build": "npm run build --workspace=packages/node",
+    "lint": "npm run lint --workspace=packages/node"
+  }
+}

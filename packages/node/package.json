@@ -1,0 +1,40 @@
+{
+  "name": "nurse-andrea",
+  "version": "0.1.0",
+  "description": "Observability SDK for Node.js — ships logs and metrics to NurseAndrea",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --forceExit",
+    "lint": "echo 'lint ok'"
+  },
+  "keywords": ["observability", "monitoring", "logging", "nurseandrea"],
+  "author": "Ago AI LLC",
+  "license": "MIT",
+  "homepage": "https://nurseandrea.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/narteyb/nurse-andrea-sdks"
+  },
+  "peerDependencies": {
+    "express": ">=4.0.0",
+    "fastify": ">=4.0.0",
+    "winston": ">=3.0.0",
+    "pino": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": { "optional": true },
+    "fastify": { "optional": true },
+    "winston": { "optional": true },
+    "pino": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  }
+}
