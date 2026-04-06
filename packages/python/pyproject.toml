@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nurse-andrea"
+version = "0.1.0"
+description = "Observability SDK for Python — ships logs and metrics to NurseAndrea"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Ago AI LLC", email = "hello@nurseandrea.io"}]
+requires-python = ">=3.11"
+keywords = ["observability", "monitoring", "logging", "nurseandrea"]
+dependencies = ["httpx>=0.25.0"]
+
+[project.optional-dependencies]
+django = ["django>=4.0"]
+fastapi = ["fastapi>=0.100.0", "httpx>=0.25.0"]
+flask = ["flask>=3.0"]
+structlog = ["structlog>=23.0"]
+loguru = ["loguru>=0.7"]
+dev = [
+  "pytest>=7.0",
+  "pytest-asyncio>=0.23",
+  "respx>=0.21",
+  "httpx>=0.25.0",
+  "django>=4.0",
+  "fastapi>=0.100.0",
+  "flask>=3.0",
+  "structlog>=23.0",
+  "loguru>=0.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nurse_andrea"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
