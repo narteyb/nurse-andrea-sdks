@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+gemspec
+
+gem "rails",     "~> 8.1"
+gem "rspec",     "~> 3.13"
+gem "webmock",   "~> 3.23"
+gem "rack-test", "~> 2.1"
