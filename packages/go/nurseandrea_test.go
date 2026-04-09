@@ -197,8 +197,8 @@ func TestVersionConstant(t *testing.T) {
 	if nurseandrea.Version == "" {
 		t.Error("expected non-empty Version constant")
 	}
-	if nurseandrea.Version != "0.1.0" {
-		t.Errorf("expected 0.1.0, got %s", nurseandrea.Version)
+	if nurseandrea.Version != "0.1.8" {
+		t.Errorf("expected 0.1.8, got %s", nurseandrea.Version)
 	}
 }
 

@@ -31,7 +31,7 @@ get_client().start()
 import atexit
 atexit.register(get_client().stop)
 
-__version__ = "0.1.0"
+__version__ = "0.1.8"
 __all__ = [
     "configure", "get_config", "is_enabled", "get_client",
     "django_middleware", "fastapi_middleware", "flask_init_app",

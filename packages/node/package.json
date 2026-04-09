@@ -1,6 +1,6 @@
 {
   "name": "nurse-andrea",
-  "version": "0.1.0",
+  "version": "0.1.8",
   "description": "Observability SDK for Node.js — ships logs and metrics to NurseAndrea",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
