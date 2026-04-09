@@ -22,7 +22,14 @@ describe("Express middleware", () => {
     const finishHandler = res.on.mock.calls[0][1]
     finishHandler()
     expect(enqueueMetric).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "http.request.duration" })
+      expect.objectContaining({
+        name: "http.server.duration",
+        tags: expect.objectContaining({
+          http_method: "GET",
+          http_path:   "/test",
+          http_status: "200",
+        }),
+      })
     )
   })
 

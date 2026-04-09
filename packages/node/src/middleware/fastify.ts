@@ -18,13 +18,13 @@ export async function nurseAndreaFastify(
       const route = request.routeOptions?.url ?? request.url
 
       client.enqueueMetric({
-        name: "http.request.duration",
+        name: "http.server.duration",
         value: durationMs,
         unit: "ms",
         tags: {
-          method: request.method,
-          route: route,
-          status_code: String(reply.statusCode),
+          http_method: request.method,
+          http_path: route,
+          http_status: String(reply.statusCode),
           service: getConfig().serviceName,
         },
       })
@@ -34,9 +34,9 @@ export async function nurseAndreaFastify(
           level: reply.statusCode >= 500 ? "error" : "warn",
           message: `${request.method} ${route} → ${reply.statusCode} (${durationMs}ms)`,
           metadata: {
-            method: request.method,
-            route: route,
-            status_code: reply.statusCode,
+            http_method: request.method,
+            http_path: route,
+            http_status: reply.statusCode,
             duration_ms: durationMs,
           },
         })

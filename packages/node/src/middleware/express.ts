@@ -16,13 +16,13 @@ export function nurseAndreaExpress() {
       const route = (req.route?.path ?? req.path) as string
 
       client.enqueueMetric({
-        name: "http.request.duration",
+        name: "http.server.duration",
         value: durationMs,
         unit: "ms",
         tags: {
-          method: req.method,
-          route: route,
-          status_code: String(res.statusCode),
+          http_method: req.method,
+          http_path: route,
+          http_status: String(res.statusCode),
           service: getConfig().serviceName,
         },
       })
@@ -32,9 +32,9 @@ export function nurseAndreaExpress() {
           level: res.statusCode >= 500 ? "error" : "warn",
           message: `${req.method} ${route} → ${res.statusCode} (${durationMs}ms)`,
           metadata: {
-            method: req.method,
-            route: route,
-            status_code: res.statusCode,
+            http_method: req.method,
+            http_path: route,
+            http_status: res.statusCode,
             duration_ms: durationMs,
           },
         })
