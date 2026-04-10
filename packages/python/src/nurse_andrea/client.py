@@ -29,7 +29,6 @@ class NurseAndreaClient:
         self._metric_queue: list[MetricEntry] = []
         self._lock = threading.Lock()
         self._timer: Optional[threading.Timer] = None
-        self._memory_thread: Optional[threading.Thread] = None
         self._started = False
 
     def start(self):
@@ -37,7 +36,6 @@ class NurseAndreaClient:
             return
         self._started = True
         self._schedule_flush()
-        self._start_memory_reporter()
 
     def stop(self):
         if self._timer:
@@ -80,9 +78,21 @@ class NurseAndreaClient:
         self._timer.start()
 
     def _scheduled_flush(self):
+        self._collect_process_memory()
         self._flush_sync()
         if self._started:
             self._schedule_flush()
+
+    def _collect_process_memory(self):
+        try:
+            rss = _get_rss_bytes()
+            if rss and rss > 0:
+                self.enqueue_metric(
+                    name="process.memory.rss", value=float(rss),
+                    unit="bytes", tags={"service": get_config().service_name},
+                )
+        except Exception:
+            pass
 
     def _flush_async(self):
         threading.Thread(target=self._flush_sync, daemon=True).start()
@@ -129,24 +139,6 @@ class NurseAndreaClient:
                 self._log_queue[:0] = logs
                 self._metric_queue[:0] = metrics
 
-    def _start_memory_reporter(self):
-        if self._memory_thread and self._memory_thread.is_alive():
-            return
-        self._memory_thread = threading.Thread(target=self._memory_loop, daemon=True)
-        self._memory_thread.start()
-
-    def _memory_loop(self):
-        while self._started:
-            try:
-                rss = _get_rss_bytes()
-                if rss and rss > 0:
-                    self.enqueue_metric(
-                        name="process.memory.rss", value=float(rss),
-                        unit="bytes", tags={"service": get_config().service_name},
-                    )
-            except Exception:
-                pass
-            time.sleep(30)
 
 def _get_rss_bytes() -> Optional[int]:
     try:

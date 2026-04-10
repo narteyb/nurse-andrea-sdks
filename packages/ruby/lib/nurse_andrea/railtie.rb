@@ -9,7 +9,6 @@ module NurseAndrea
         Rails.logger = NurseAndrea::LogInterceptor.new(Rails.logger)
         NurseAndrea::LogShipper.instance.start!
         NurseAndrea::MetricsShipper.instance.start!
-        NurseAndrea::MemoryReporter.start!
         Rails.logger.info("[NurseAndrea] Logger interceptor installed " \
                           "(host: #{NurseAndrea.config.host}, " \
                           "service: #{NurseAndrea.config.service_name || 'auto'})")

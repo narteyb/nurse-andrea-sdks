@@ -55,10 +55,26 @@ module NurseAndrea
     def flush_loop
       loop do
         sleep FLUSH_INTERVAL
+        collect_process_memory
         flush!
       rescue => e
         warn "[NurseAndrea::MetricsShipper] #{e.message}" if NurseAndrea.config.debug
       end
+    end
+
+    def collect_process_memory
+      rss = NurseAndrea::MemoryReporter.rss_bytes
+      return unless rss&.positive?
+
+      enqueue(
+        name:      "process.memory.rss",
+        value:     rss,
+        unit:      "bytes",
+        timestamp: Time.now.utc.iso8601(3),
+        tags:      { service: NurseAndrea.config.service_name }
+      )
+    rescue
+      nil
     end
 
     def ship(metrics)
