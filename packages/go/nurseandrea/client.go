@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -56,6 +57,7 @@ func GetClient() *Client {
 			httpClient: &http.Client{Timeout: 10 * time.Second},
 		}
 		go globalClient.flushLoop()
+		go globalClient.memoryLoop()
 	})
 	return globalClient
 }
@@ -82,6 +84,24 @@ func (c *Client) flushLoop() {
 		select {
 		case <-ticker.C:
 			c.flush()
+		case <-c.stopCh:
+			return
+		}
+	}
+}
+
+func (c *Client) memoryLoop() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			func() {
+				defer func() { recover() }() // never crash the host app
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				c.EnqueueMetric("process.memory.rss", float64(m.Sys), "bytes", nil)
+			}()
 		case <-c.stopCh:
 			return
 		}

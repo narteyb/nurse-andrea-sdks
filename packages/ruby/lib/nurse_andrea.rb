@@ -8,6 +8,7 @@ require "nurse_andrea/metrics_shipper"
 require "nurse_andrea/backfill"
 require "nurse_andrea/job_instrumentation"
 require "nurse_andrea/queue_depth_reporter"
+require "nurse_andrea/memory_reporter"
 
 require "nurse_andrea/railtie" if defined?(Rails::Railtie)
 require "nurse_andrea/engine"  if defined?(Rails::Engine)

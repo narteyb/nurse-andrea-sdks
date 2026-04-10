@@ -20,6 +20,7 @@ class NurseAndreaClient {
   private logQueue: LogEntry[] = []
   private metricQueue: MetricEntry[] = []
   private timer: ReturnType<typeof setInterval> | null = null
+  private memoryTimer: ReturnType<typeof setInterval> | null = null
 
   start(): void {
     if (this.timer) return // idempotent — already running
@@ -27,12 +28,25 @@ class NurseAndreaClient {
     const config = getConfig()
     this.timer = setInterval(() => this.flush(), config.flushIntervalMs)
     if (this.timer.unref) this.timer.unref()
+
+    // Ship process RSS every 30 seconds
+    this.memoryTimer = setInterval(() => {
+      try {
+        const rss = process.memoryUsage().rss
+        this.enqueueMetric({ name: "process.memory.rss", value: rss, unit: "bytes" })
+      } catch { /* memory reporting must never crash the host app */ }
+    }, 30_000)
+    if (this.memoryTimer.unref) this.memoryTimer.unref()
   }
 
   stop(): void {
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
+    }
+    if (this.memoryTimer) {
+      clearInterval(this.memoryTimer)
+      this.memoryTimer = null
     }
     this.flush()
   }
