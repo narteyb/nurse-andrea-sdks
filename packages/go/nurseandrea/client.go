@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -177,10 +179,12 @@ func (c *Client) flush() {
 func (c *Client) post(url string, headers map[string]string, payload interface{}) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[NurseAndrea] marshal error: %v\n", err)
 		return fmt.Errorf("nurseandrea: marshal error: %w", err)
 	}
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[NurseAndrea] request error: %v\n", err)
 		return fmt.Errorf("nurseandrea: request error: %w", err)
 	}
 	for k, v := range headers {
@@ -188,8 +192,17 @@ func (c *Client) post(url string, headers map[string]string, payload interface{}
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[NurseAndrea] POST %s failed: %v\n", url, err)
 		return fmt.Errorf("nurseandrea: http error: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		snippet := string(respBody)
+		if len(snippet) > 200 {
+			snippet = snippet[:200]
+		}
+		fmt.Fprintf(os.Stderr, "[NurseAndrea] POST %s → %d: %s\n", url, resp.StatusCode, snippet)
+	}
 	return nil
 }

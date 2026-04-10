@@ -25,13 +25,13 @@ module NurseAndrea
       response = http.request(request)
       success = response.code.to_i.between?(200, 299)
 
-      if NurseAndrea.config.debug && !success
-        warn "[NurseAndrea] HTTP #{response.code} from #{uri}: #{response.body.to_s[0..200]}"
+      unless success
+        $stderr.puts "[NurseAndrea] HTTP #{response.code} from #{uri}: #{response.body.to_s[0..200]}"
       end
 
       success
     rescue => e
-      warn "[NurseAndrea] HTTP error posting to #{url}: #{e.class}: #{e.message}" if NurseAndrea.config.debug
+      $stderr.puts "[NurseAndrea] HTTP error posting to #{url}: #{e.class}: #{e.message}"
       false
     end
   end

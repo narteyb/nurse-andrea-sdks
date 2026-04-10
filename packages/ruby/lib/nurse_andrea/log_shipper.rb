@@ -62,8 +62,9 @@ module NurseAndrea
     end
 
     def ship(entries)
+      sources = entries.map { |e| e[:source] || NurseAndrea.config.service_name }.compact.uniq
       HttpClient.new.post(NurseAndrea.config.ingest_url, {
-        services:     [ NurseAndrea.config.service_name ].compact,
+        services:     sources.empty? ? [ NurseAndrea.config.service_name ].compact : sources,
         sdk_version:  NurseAndrea.config.sdk_version,
         sdk_language: NurseAndrea.config.sdk_language,
         logs: entries.map { |e|
@@ -71,7 +72,7 @@ module NurseAndrea
             level:       e[:level],
             message:     e[:message],
             occurred_at: e[:timestamp],
-            source:      NurseAndrea.config.service_name || "nurse_andrea_gem",
+            source:      e[:source] || NurseAndrea.config.service_name || "nurse_andrea_gem",
             batch_id:    SecureRandom.uuid,
             payload:     e[:metadata] || {}
           }

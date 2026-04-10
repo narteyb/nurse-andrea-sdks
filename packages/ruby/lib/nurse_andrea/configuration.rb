@@ -10,6 +10,7 @@ module NurseAndrea
 
     def initialize
       @host           = DEFAULT_HOST
+      @api_key        = ENV["NURSE_ANDREA_INGEST_TOKEN"] || ENV["NURSE_ANDREA_TOKEN"]
       @timeout        = 5
       @log_level      = :debug
       @batch_size     = 100

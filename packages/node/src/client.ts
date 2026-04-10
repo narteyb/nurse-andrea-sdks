@@ -22,6 +22,7 @@ class NurseAndreaClient {
   private timer: ReturnType<typeof setInterval> | null = null
 
   start(): void {
+    if (this.timer) return // idempotent — already running
     if (!isEnabled()) return
     const config = getConfig()
     this.timer = setInterval(() => this.flush(), config.flushIntervalMs)
@@ -74,21 +75,28 @@ class NurseAndreaClient {
 
     try {
       if (logs.length > 0) {
-        await fetch(ingestUrl(), {
+        const res = await fetch(ingestUrl(), {
           method: "POST",
           headers,
           body: JSON.stringify({ logs }),
         })
+        if (!res.ok) {
+          process.stderr.write(`[NurseAndrea] POST ${ingestUrl()} → ${res.status}\n`)
+        }
       }
 
       if (metrics.length > 0) {
-        await fetch(metricsUrl(), {
+        const res = await fetch(metricsUrl(), {
           method: "POST",
           headers,
           body: JSON.stringify({ metrics }),
         })
+        if (!res.ok) {
+          process.stderr.write(`[NurseAndrea] POST ${metricsUrl()} → ${res.status}\n`)
+        }
       }
-    } catch {
+    } catch (err) {
+      process.stderr.write(`[NurseAndrea] Flush failed: ${(err as Error).message}\n`)
       this.logQueue.unshift(...logs)
       this.metricQueue.unshift(...metrics)
     }

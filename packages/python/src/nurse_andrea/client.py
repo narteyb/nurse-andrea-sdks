@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -103,20 +104,25 @@ class NurseAndreaClient:
         try:
             with httpx.Client(timeout=10.0) as http:
                 if logs:
-                    http.post(config.ingest_url, json={
-                        "sdk_version": "0.1.0", "sdk_language": "python",
+                    r = http.post(config.ingest_url, json={
+                        "sdk_version": "0.1.8", "sdk_language": "python",
                         "logs": [{"level": e.level, "message": e.message,
                                   "occurred_at": e.timestamp, "source": e.service,
                                   "metadata": e.metadata} for e in logs]
                     }, headers=headers)
+                    if r.status_code >= 400:
+                        sys.stderr.write(f"[NurseAndrea] POST {config.ingest_url} → {r.status_code}: {r.text[:200]}\n")
                 if metrics:
-                    http.post(config.metrics_url, json={
-                        "sdk_version": "0.1.0", "sdk_language": "python",
+                    r = http.post(config.metrics_url, json={
+                        "sdk_version": "0.1.8", "sdk_language": "python",
                         "metrics": [{"name": e.name, "value": e.value,
                                      "unit": e.unit, "occurred_at": e.timestamp,
                                      "tags": e.tags} for e in metrics]
                     }, headers=headers)
-        except Exception:
+                    if r.status_code >= 400:
+                        sys.stderr.write(f"[NurseAndrea] POST {config.metrics_url} → {r.status_code}: {r.text[:200]}\n")
+        except Exception as e:
+            sys.stderr.write(f"[NurseAndrea] Flush failed: {type(e).__name__}: {e}\n")
             with self._lock:
                 self._log_queue[:0] = logs
                 self._metric_queue[:0] = metrics

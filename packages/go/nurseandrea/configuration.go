@@ -29,8 +29,10 @@ var (
 // Call once at application startup before using any middleware or interceptors.
 func Configure(cfg Config) {
 	configMu.Lock()
-	defer configMu.Unlock()
 
+	if cfg.Token == "" {
+		cfg.Token = os.Getenv("NURSE_ANDREA_INGEST_TOKEN")
+	}
 	if cfg.Token == "" {
 		cfg.Token = os.Getenv("NURSE_ANDREA_TOKEN")
 	}
@@ -66,12 +68,30 @@ func Configure(cfg Config) {
 
 	if cfg.Token == "" {
 		fmt.Fprintln(os.Stderr,
-			"[NurseAndrea] No token configured. Set NURSE_ANDREA_TOKEN. Monitoring disabled.")
+			"[NurseAndrea] No token configured. Set NURSE_ANDREA_INGEST_TOKEN. Monitoring disabled.")
+		globalConfig = cfg
+		configured = true
+		configMu.Unlock()
+		return
 	}
 
 	globalConfig = cfg
 	configured = true
+	bannerHost := cfg.Host
+	bannerService := cfg.ServiceName
+	configMu.Unlock()
+
+	// Trigger lazy client init (starts flush loop) and print startup banner.
+	GetClient()
+	if !bannerPrinted {
+		bannerPrinted = true
+		fmt.Fprintf(os.Stdout,
+			"[NurseAndrea] Shipping to %s as %s (go sdk v%s)\n",
+			bannerHost, bannerService, Version)
+	}
 }
+
+var bannerPrinted bool
 
 // GetConfig returns the current configuration.
 func GetConfig() Config {

@@ -18,6 +18,7 @@ module NurseAndrea
   class << self
     def configure
       yield(config)
+      print_startup_banner if config.enabled? && config.valid?
     end
 
     def config
@@ -26,6 +27,16 @@ module NurseAndrea
 
     def reset_config!
       @config = nil
+      @banner_printed = nil
+    end
+
+    private
+
+    def print_startup_banner
+      return if @banner_printed
+      @banner_printed = true
+      $stdout.puts "[NurseAndrea] Shipping to #{config.host} as #{config.service_name} (ruby sdk v#{NurseAndrea::VERSION})"
+      $stdout.flush
     end
   end
 end

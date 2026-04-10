@@ -9,12 +9,14 @@ export interface NurseAndreaConfig {
 }
 
 const DEFAULT_HOST = "https://nurseandrea.io"
+const SDK_VERSION  = "0.1.8"
 
 let _config: NurseAndreaConfig | null = null
+let _bannerPrinted = false
 
 export function configure(options: Partial<NurseAndreaConfig>): void {
   _config = {
-    token:           options.token           ?? process.env.NURSE_ANDREA_TOKEN ?? "",
+    token:           options.token           ?? process.env.NURSE_ANDREA_INGEST_TOKEN ?? process.env.NURSE_ANDREA_TOKEN ?? "",
     host:            options.host            ?? process.env.NURSE_ANDREA_HOST  ?? DEFAULT_HOST,
     serviceName:     options.serviceName     ?? process.env.NURSE_ANDREA_SERVICE_NAME ?? detectServiceName(),
     enabled:         options.enabled         ?? process.env.NODE_ENV !== "test",
@@ -24,8 +26,25 @@ export function configure(options: Partial<NurseAndreaConfig>): void {
   }
 
   if (!_config.token) {
-    console.warn("[NurseAndrea] No token configured. Set NURSE_ANDREA_TOKEN or pass token to configure(). Monitoring disabled.")
+    process.stderr.write("[NurseAndrea] No token configured. Set NURSE_ANDREA_INGEST_TOKEN or pass token to configure(). Monitoring disabled.\n")
     _config.enabled = false
+    return
+  }
+
+  // Defer require to break the circular import (client.ts imports from this file).
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { client } = require("./client") as typeof import("./client")
+  client.start()
+
+  if (!_bannerPrinted) {
+    _bannerPrinted = true
+    process.stdout.write(
+      `[NurseAndrea] Shipping to ${_config.host} as ${_config.serviceName} (node sdk v${SDK_VERSION})\n`
+    )
+
+    const stop = () => client.stop()
+    process.on("beforeExit", stop)
+    process.on("SIGTERM", stop)
   }
 }
 

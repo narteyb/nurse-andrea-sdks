@@ -26,11 +26,6 @@ def loguru_sink():
     from .interceptors.loguru import nurse_andrea_loguru_sink
     return nurse_andrea_loguru_sink
 
-get_client().start()
-
-import atexit
-atexit.register(get_client().stop)
-
 __version__ = "0.1.8"
 __all__ = [
     "configure", "get_config", "is_enabled", "get_client",
