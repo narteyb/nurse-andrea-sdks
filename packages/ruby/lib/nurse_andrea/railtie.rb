@@ -22,7 +22,9 @@ module NurseAndrea
     initializer "nurse_andrea.insert_middleware", after: :load_config_initializers do |app|
       if NurseAndrea.config.enabled? && NurseAndrea.config.valid?
         app.middleware.use NurseAndrea::MetricsMiddleware
-        Rails.logger.info("[NurseAndrea] MetricsMiddleware inserted")
+        app.middleware.use NurseAndrea::TraceMiddleware
+        NurseAndrea::TraceExporter.instance.start!
+        Rails.logger.info("[NurseAndrea] MetricsMiddleware + TraceMiddleware inserted")
       else
         warn "[NurseAndrea] Skipping MetricsMiddleware — no token configured. " \
              "Ensure NurseAndrea.configure is called in config/initializers/nurse_andrea.rb"

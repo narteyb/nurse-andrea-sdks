@@ -1,5 +1,6 @@
 import { client } from "../client"
 import { isEnabled, getConfig } from "../configuration"
+import { generateTraceId, generateSpanId, enqueueSpan } from "../tracing/exporter"
 
 // Minimal type declarations — fastify is a peer dependency
 interface FastifyRequest { method: string; url: string; routeOptions?: { url?: string } }
@@ -16,6 +17,21 @@ export async function nurseAndreaFastify(
 
       const durationMs = Math.round(reply.elapsedTime)
       const route = request.routeOptions?.url ?? request.url
+      const now = BigInt(Date.now()) * 1_000_000n
+      const startNs = now - BigInt(Math.round(durationMs * 1_000_000))
+
+      enqueueSpan({
+        traceId: generateTraceId(), spanId: generateSpanId(), parentSpanId: "",
+        name: `${request.method} ${route}`, kind: 2,
+        startTimeUnixNano: startNs.toString(), endTimeUnixNano: now.toString(),
+        status: { code: reply.statusCode >= 500 ? 2 : 1, message: reply.statusCode >= 500 ? `HTTP ${reply.statusCode}` : "" },
+        attributes: [
+          { key: "http.method", value: { stringValue: request.method } },
+          { key: "http.url", value: { stringValue: route } },
+          { key: "http.status_code", value: { intValue: reply.statusCode } },
+        ],
+        events: [],
+      })
 
       client.enqueueMetric({
         name: "http.server.duration",

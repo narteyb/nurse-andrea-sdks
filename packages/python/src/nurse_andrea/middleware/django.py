@@ -2,6 +2,7 @@ import re
 import time
 from ..client import get_client
 from ..configuration import is_enabled, get_config
+from ..tracing import enqueue_span, make_server_span
 
 _NUMERIC_SEGMENT = re.compile(r"/\d+(?=/|$)")
 
@@ -16,7 +17,9 @@ class NurseAndreaDjangoMiddleware:
         if not is_enabled():
             return self.get_response(request)
         started_at = time.monotonic()
+        start_ns = int(time.time() * 1_000_000_000)
         response = self.get_response(request)
+        end_ns = int(time.time() * 1_000_000_000)
         duration_ms = (time.monotonic() - started_at) * 1000
         # Prefer the matched URL pattern, fall back to numeric normalisation.
         route = None
@@ -36,4 +39,8 @@ class NurseAndreaDjangoMiddleware:
                 level="error" if response.status_code >= 500 else "warn",
                 message=f"{request.method} {route} → {response.status_code} ({duration_ms:.1f}ms)",
             )
+        enqueue_span(make_server_span(
+            request.method, route, response.status_code,
+            start_ns, end_ns, get_config().service_name,
+        ))
         return response

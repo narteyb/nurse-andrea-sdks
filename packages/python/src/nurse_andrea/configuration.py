@@ -66,6 +66,9 @@ def configure(**kwargs) -> NurseAndreaConfig:
     from .client import get_client
     get_client().start()
 
+    from .tracing import start_trace_exporter
+    start_trace_exporter()
+
     if not _banner_printed:
         _banner_printed = True
         sys.stdout.write(

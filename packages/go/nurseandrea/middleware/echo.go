@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea"
+	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea/tracing"
 )
 
 // Echo returns an Echo middleware that records HTTP metrics.
@@ -22,7 +23,9 @@ func Echo() echo.MiddlewareFunc {
 			}
 
 			startedAt := time.Now()
+			startNs := startedAt.UnixNano()
 			err := next(c)
+			endNs := time.Now().UnixNano()
 			durationMs := float64(time.Since(startedAt).Milliseconds())
 
 			// Use matched route pattern
@@ -60,6 +63,8 @@ func Echo() echo.MiddlewareFunc {
 					},
 				)
 			}
+
+			tracing.EnqueueSpan(tracing.MakeServerSpan(c.Request().Method, route, status, startNs, endNs, nurseandrea.GetConfig().ServiceName))
 
 			return err
 		}

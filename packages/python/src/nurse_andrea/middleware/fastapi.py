@@ -3,6 +3,7 @@ import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from ..tracing import enqueue_span, make_server_span
 from ..client import get_client
 from ..configuration import is_enabled, get_config
 
@@ -16,7 +17,9 @@ class NurseAndreaFastAPIMiddleware(BaseHTTPMiddleware):
         if not is_enabled():
             return await call_next(request)
         started_at = time.monotonic()
+        start_ns = int(time.time() * 1_000_000_000)
         response = await call_next(request)
+        end_ns = int(time.time() * 1_000_000_000)
         duration_ms = (time.monotonic() - started_at) * 1000
         # Prefer the matched route template, fall back to numeric normalisation.
         route = None
@@ -36,4 +39,8 @@ class NurseAndreaFastAPIMiddleware(BaseHTTPMiddleware):
                 level="error" if response.status_code >= 500 else "warn",
                 message=f"{request.method} {route} → {response.status_code} ({duration_ms:.1f}ms)",
             )
+        enqueue_span(make_server_span(
+            request.method, route, response.status_code,
+            start_ns, end_ns, get_config().service_name,
+        ))
         return response

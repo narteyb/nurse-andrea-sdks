@@ -36,6 +36,9 @@ export function configure(options: Partial<NurseAndreaConfig>): void {
   const { client } = require("./client") as typeof import("./client")
   client.start()
 
+  const { startTraceExporter } = require("./tracing/exporter") as typeof import("./tracing/exporter")
+  startTraceExporter()
+
   if (!_bannerPrinted) {
     _bannerPrinted = true
     process.stdout.write(

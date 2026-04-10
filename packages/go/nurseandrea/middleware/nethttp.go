@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea"
+	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea/tracing"
 )
 
 // Replaces numeric path segments like /users/123 with /users/:id so that
@@ -36,8 +37,10 @@ func NetHTTP(next http.Handler) http.Handler {
 		}
 
 		startedAt := time.Now()
+		startNs := startedAt.UnixNano()
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		next.ServeHTTP(rw, r)
+		endNs := time.Now().UnixNano()
 		durationMs := float64(time.Since(startedAt).Milliseconds())
 
 		route := normalisePath(r.URL.Path)
@@ -68,6 +71,8 @@ func NetHTTP(next http.Handler) http.Handler {
 				},
 			)
 		}
+
+		tracing.EnqueueSpan(tracing.MakeServerSpan(r.Method, route, rw.statusCode, startNs, endNs, nurseandrea.GetConfig().ServiceName))
 	})
 }
 

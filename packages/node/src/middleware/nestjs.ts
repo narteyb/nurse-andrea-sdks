@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express"
 import { client } from "../client"
 import { isEnabled, getConfig } from "../configuration"
+import { generateTraceId, generateSpanId, enqueueSpan } from "../tracing/exporter"
 
 // NestJS middleware — injectable class
 // Usage: consumer.apply(NurseAndreaMiddleware).forRoutes("*")
@@ -12,10 +13,27 @@ export class NurseAndreaMiddleware {
     }
 
     const startedAt = Date.now()
+    const startNs = BigInt(Date.now()) * 1_000_000n
+    const traceId = generateTraceId()
+    const spanId = generateSpanId()
 
     res.on("finish", () => {
       const durationMs = Date.now() - startedAt
+      const endNs = BigInt(Date.now()) * 1_000_000n
       const route = req.route?.path ?? req.path
+
+      enqueueSpan({
+        traceId, spanId, parentSpanId: "",
+        name: `${req.method} ${route}`, kind: 2,
+        startTimeUnixNano: startNs.toString(), endTimeUnixNano: endNs.toString(),
+        status: { code: res.statusCode >= 500 ? 2 : 1, message: res.statusCode >= 500 ? `HTTP ${res.statusCode}` : "" },
+        attributes: [
+          { key: "http.method", value: { stringValue: req.method } },
+          { key: "http.url", value: { stringValue: route } },
+          { key: "http.status_code", value: { intValue: res.statusCode } },
+        ],
+        events: [],
+      })
 
       client.enqueueMetric({
         name: "http.server.duration",

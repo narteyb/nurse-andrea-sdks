@@ -81,8 +81,9 @@ func Configure(cfg Config) {
 	bannerService := cfg.ServiceName
 	configMu.Unlock()
 
-	// Trigger lazy client init (starts flush loop) and print startup banner.
+	// Trigger lazy client init (starts flush loop) + trace exporter, print startup banner.
 	GetClient()
+	tracingStart()
 	if !bannerPrinted {
 		bannerPrinted = true
 		fmt.Fprintf(os.Stdout,
@@ -92,6 +93,20 @@ func Configure(cfg Config) {
 }
 
 var bannerPrinted bool
+
+// tracingStartFunc is set by the tracing package to avoid circular imports.
+var tracingStartFunc func()
+
+// SetTracingStartFunc is called by the tracing package's init() to register itself.
+func SetTracingStartFunc(fn func()) {
+	tracingStartFunc = fn
+}
+
+func tracingStart() {
+	if tracingStartFunc != nil {
+		tracingStartFunc()
+	}
+}
 
 // GetConfig returns the current configuration.
 func GetConfig() Config {

@@ -1,6 +1,7 @@
 import time
 from ..client import get_client
 from ..configuration import is_enabled, get_config
+from ..tracing import enqueue_span, make_server_span
 
 def init_app(app):
     @app.before_request
@@ -8,6 +9,7 @@ def init_app(app):
         from flask import g
         if is_enabled():
             g._nurse_andrea_start = time.monotonic()
+            g._nurse_andrea_start_ns = int(time.time() * 1_000_000_000)
 
     @app.after_request
     def _after(response):
@@ -30,4 +32,11 @@ def init_app(app):
                 level="error" if response.status_code >= 500 else "warn",
                 message=f"{request.method} {route} → {response.status_code} ({duration_ms:.1f}ms)",
             )
+        start_ns = getattr(g, "_nurse_andrea_start_ns", None)
+        if start_ns:
+            end_ns = int(time.time() * 1_000_000_000)
+            enqueue_span(make_server_span(
+                request.method, route, response.status_code,
+                start_ns, end_ns, get_config().service_name,
+            ))
         return response

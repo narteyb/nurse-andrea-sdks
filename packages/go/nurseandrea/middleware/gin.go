@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea"
+	"github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea/tracing"
 )
 
 // Gin returns a Gin middleware that records HTTP metrics.
@@ -22,7 +23,9 @@ func Gin() gin.HandlerFunc {
 		}
 
 		startedAt := time.Now()
+		startNs := startedAt.UnixNano()
 		c.Next()
+		endNs := time.Now().UnixNano()
 		durationMs := float64(time.Since(startedAt).Milliseconds())
 
 		// Use matched route pattern, not raw URL
@@ -58,5 +61,7 @@ func Gin() gin.HandlerFunc {
 				},
 			)
 		}
+
+		tracing.EnqueueSpan(tracing.MakeServerSpan(c.Request.Method, route, c.Writer.Status(), startNs, endNs, nurseandrea.GetConfig().ServiceName))
 	}
 }
