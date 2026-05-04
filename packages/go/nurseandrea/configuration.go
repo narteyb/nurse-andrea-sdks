@@ -142,6 +142,11 @@ func MetricsURL() string {
 	return GetConfig().Host + "/api/v1/metrics"
 }
 
+// DeployURL returns the full deploy event endpoint URL.
+func DeployURL() string {
+	return GetConfig().Host + "/api/v1/deploy"
+}
+
 // BoolPtr is a helper to create a *bool for Config.Enabled.
 func BoolPtr(b bool) *bool {
 	return &b

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 DEFAULT_HOST = "https://nurseandrea.io"
-SDK_VERSION  = "0.1.8"
+SDK_VERSION  = "0.2.1"
 
 @dataclass
 class NurseAndreaConfig:

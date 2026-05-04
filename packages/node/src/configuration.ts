@@ -9,7 +9,7 @@ export interface NurseAndreaConfig {
 }
 
 const DEFAULT_HOST = "https://nurseandrea.io"
-const SDK_VERSION  = "0.1.8"
+const SDK_VERSION  = "0.2.1"
 
 let _config: NurseAndreaConfig | null = null
 let _bannerPrinted = false

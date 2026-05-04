@@ -1,5 +1,6 @@
 from .configuration import configure, get_config, is_enabled
 from .client import get_client
+from .deploy import deploy
 
 def django_middleware():
     from .middleware.django import NurseAndreaDjangoMiddleware
@@ -26,10 +27,11 @@ def loguru_sink():
     from .interceptors.loguru import nurse_andrea_loguru_sink
     return nurse_andrea_loguru_sink
 
-__version__ = "0.1.8"
+__version__ = "0.2.1"
 __all__ = [
     "configure", "get_config", "is_enabled", "get_client",
     "django_middleware", "fastapi_middleware", "flask_init_app",
     "intercept_logging", "structlog_processor", "loguru_sink",
+    "deploy",
     "__version__",
 ]
