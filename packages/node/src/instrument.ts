@@ -4,6 +4,7 @@
 import { registerDiscovery } from "./discovery"
 import { scanManagedServices } from "./managed_service_scanner"
 import { detectPlatform } from "./platform_detector"
+import { startContinuousScanner } from "./continuous_scanner"
 
 interface InstrumentOptions {
   prisma?: any
@@ -11,6 +12,10 @@ interface InstrumentOptions {
   sequelize?: any
   redisClient?: any
   worker?: any
+  // Disables the periodic env-rescan; defaults to false so dependencies
+  // added after boot are picked up. Set true for short-lived processes
+  // (CLI scripts, one-off tasks) where the timer would just sit idle.
+  disableContinuousScan?: boolean
 }
 
 export function instrument(opts: InstrumentOptions = {}): void {
@@ -63,4 +68,9 @@ export function instrument(opts: InstrumentOptions = {}): void {
       process.stderr.write(`[NurseAndrea] BullMQ hook failed: ${(e as Error).message}\n`)
     }
   }
+
+  // Periodic rescan — picks up dependencies added after boot. Honors
+  // disableContinuousScan; the timer is unref'd so it never blocks
+  // process exit.
+  startContinuousScanner({ disable: opts.disableContinuousScan })
 }
