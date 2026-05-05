@@ -1,4 +1,6 @@
 import { getConfig, ingestUrl, metricsUrl, isEnabled } from "./configuration"
+import { flushDiscoveries } from "./discovery"
+import { detectPlatform } from "./platform_detector"
 
 export interface LogEntry {
   level: "debug" | "info" | "warn" | "error"
@@ -96,10 +98,18 @@ class NurseAndreaClient {
       }
 
       if (metrics.length > 0) {
+        const payload: Record<string, unknown> = {
+          metrics,
+          platform: detectPlatform(),
+        }
+        const componentDiscoveries = flushDiscoveries()
+        if (componentDiscoveries.length > 0) {
+          payload.component_discoveries = componentDiscoveries
+        }
         const res = await fetch(metricsUrl(), {
           method: "POST",
           headers,
-          body: JSON.stringify({ metrics }),
+          body: JSON.stringify(payload),
         })
         if (!res.ok) {
           process.stderr.write(`[NurseAndrea] POST ${metricsUrl()} → ${res.status}\n`)
