@@ -55,32 +55,17 @@ module NurseAndrea
     def flush_loop
       loop do
         sleep FLUSH_INTERVAL
-        collect_process_memory
         flush!
       rescue => e
         warn "[NurseAndrea::MetricsShipper] #{e.message}" if NurseAndrea.config.debug
       end
     end
 
-    def collect_process_memory
-      rss = NurseAndrea::MemoryReporter.rss_bytes
-      return unless rss&.positive?
-
-      enqueue(
-        name:      "process.memory.rss",
-        value:     rss,
-        unit:      "bytes",
-        timestamp: Time.now.utc.iso8601(3),
-        tags:      { service: NurseAndrea.config.service_name }
-      )
-    rescue
-      nil
-    end
-
     def ship(metrics)
-      HttpClient.new.post(NurseAndrea.config.metrics_url, {
+      payload = {
         sdk_version:  NurseAndrea.config.sdk_version,
         sdk_language: NurseAndrea.config.sdk_language,
+        platform:     NurseAndrea.platform_context,
         metrics: metrics.map { |m|
           {
             name:        m[:name],
@@ -90,7 +75,21 @@ module NurseAndrea
             occurred_at: m[:timestamp]
           }
         }
-      })
+      }
+
+      # Include component telemetry if available
+      component_metrics = NurseAndrea.instrumentation_subscriber
+                                      .telemetry
+                                      .snapshot_and_reset!
+      payload[:component_metrics] = component_metrics if component_metrics.any?
+
+      # Include component discoveries (flush once)
+      if NurseAndrea.component_discoveries.any?
+        payload[:component_discoveries] = NurseAndrea.component_discoveries.dup
+        NurseAndrea.component_discoveries.clear
+      end
+
+      HttpClient.new.post(NurseAndrea.config.metrics_url, payload)
     end
   end
 end

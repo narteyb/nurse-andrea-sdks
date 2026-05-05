@@ -1,1 +1,12 @@
-vendor/bundle/
+# Build artifacts
+*.gem
+pkg/
+
+# Bundler local state
+.bundle/
+vendor/
+Gemfile.lock
+
+# Test/coverage
+coverage/
+.rspec_status

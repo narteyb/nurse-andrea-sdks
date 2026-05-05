@@ -14,8 +14,8 @@ Gem::Specification.new do |spec|
 
   spec.metadata = {
     "homepage_uri"          => spec.homepage,
-    "source_code_uri"       => "https://github.com/narteyb/nurse-andrea",
-    "changelog_uri"         => "https://github.com/narteyb/nurse-andrea/blob/main/gems/nurse_andrea/CHANGELOG.md",
+    "source_code_uri"       => "https://github.com/narteyb/nurse-andrea-sdks",
+    "changelog_uri"         => "https://github.com/narteyb/nurse-andrea-sdks/blob/main/packages/ruby/CHANGELOG.md",
     "rubygems_mfa_required" => "true"
   }
 
