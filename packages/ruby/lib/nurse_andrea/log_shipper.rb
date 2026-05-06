@@ -71,7 +71,10 @@ module NurseAndrea
             level:       e[:level],
             message:     e[:message],
             occurred_at: e[:timestamp],
-            source:      NurseAndrea.config.service_name || "nurse_andrea_gem",
+            # Per-entry source override (e.g. for cross-service cascade
+            # detection from a single integration) takes precedence; fall
+            # back to the configured service_name, then a static default.
+            source:      e[:source] || NurseAndrea.config.service_name || "nurse_andrea_gem",
             batch_id:    SecureRandom.uuid,
             payload:     e[:metadata] || {}
           }
