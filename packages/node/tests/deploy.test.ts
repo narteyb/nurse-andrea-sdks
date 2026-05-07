@@ -1,11 +1,19 @@
 import { deploy } from "../src/deploy"
-import { configure } from "../src/configuration"
+import { configure, _resetForTests } from "../src/configuration"
 
 const mockFetch = jest.fn()
 global.fetch = mockFetch as unknown as typeof fetch
 
 beforeEach(() => {
-  configure({ token: "test-token", host: "http://localhost:4500", enabled: true, flushIntervalMs: 99999 })
+  _resetForTests()
+  configure({
+    orgToken: "org_test_token",
+    workspaceSlug: "checkout",
+    environment: "development",
+    host: "http://localhost:4500",
+    enabled: true,
+    flushIntervalMs: 99999,
+  })
   mockFetch.mockReset()
   mockFetch.mockResolvedValue({ ok: true, status: 201 })
 })
@@ -57,7 +65,12 @@ describe("deploy()", () => {
   })
 
   it("returns false when SDK is disabled", async () => {
-    configure({ token: "", enabled: false })
+    configure({
+      orgToken: "org_test_token",
+      workspaceSlug: "checkout",
+      environment: "development",
+      enabled: false,
+    })
     const result = await deploy({ version: "1.0.0" })
     expect(result).toBe(false)
     expect(mockFetch).not.toHaveBeenCalled()

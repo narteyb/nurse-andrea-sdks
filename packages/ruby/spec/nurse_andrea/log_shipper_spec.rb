@@ -5,9 +5,11 @@ RSpec.describe NurseAndrea::LogShipper do
 
   before do
     NurseAndrea.configure do |config|
-      config.token        = "test-token"
-      config.host         = "http://localhost:4500"
-      config.service_name = "configured-service"
+      config.org_token      = "org_test_token"
+      config.workspace_slug = "test-workspace"
+      config.environment    = "development"
+      config.host           = "http://localhost:4500"
+      config.service_name   = "configured-service"
     end
     allow(NurseAndrea::HttpClient).to receive(:new).and_return(http_client)
   end

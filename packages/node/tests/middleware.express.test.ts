@@ -2,7 +2,13 @@ import { nurseAndreaExpress } from "../src/middleware/express"
 import { configure } from "../src/configuration"
 import { client } from "../src/client"
 
-configure({ token: "test-token", enabled: true, flushIntervalMs: 99999 })
+configure({
+  orgToken: "org_test_token",
+  workspaceSlug: "checkout",
+  environment: "development",
+  enabled: true,
+  flushIntervalMs: 99999,
+})
 
 afterEach(() => jest.restoreAllMocks())
 

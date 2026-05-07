@@ -66,8 +66,10 @@ async function flush(): Promise<void> {
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.token}`,
+        "Content-Type":              "application/json",
+        "Authorization":             `Bearer ${config.orgToken}`,
+        "X-NurseAndrea-Workspace":   config.workspaceSlug,
+        "X-NurseAndrea-Environment": config.environment,
       },
       body: JSON.stringify(payload),
     })

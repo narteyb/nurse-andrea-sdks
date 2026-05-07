@@ -1,5 +1,13 @@
 export { configure, getConfig, isEnabled } from "./configuration"
 export { client } from "./client"
+export { ConfigurationError, MigrationError, NurseAndreaError } from "./errors"
+export { isValidSlug, SLUG_RULES_HUMAN } from "./slug-validator"
+export {
+  detectEnvironment,
+  SUPPORTED_ENVIRONMENTS,
+  type Environment,
+} from "./environment-detector"
+export { SDK_VERSION, SDK_LANGUAGE } from "./version"
 export { nurseAndreaExpress } from "./middleware/express"
 export { nurseAndreaFastify } from "./middleware/fastify"
 export { NurseAndreaMiddleware } from "./middleware/nestjs"

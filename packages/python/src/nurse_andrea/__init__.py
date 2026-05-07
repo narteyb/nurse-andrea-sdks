@@ -1,6 +1,9 @@
-from .configuration import configure, get_config, is_enabled
+from .configuration import configure, get_config, is_enabled, NurseAndreaConfig
 from .client import get_client
 from .deploy import deploy
+from .errors import NurseAndreaError, ConfigurationError, MigrationError
+from .slug_validator import is_valid_slug, SLUG_RULES_HUMAN
+from .environment_detector import detect_environment, SUPPORTED_ENVIRONMENTS
 
 def django_middleware():
     from .middleware.django import NurseAndreaDjangoMiddleware
@@ -27,11 +30,14 @@ def loguru_sink():
     from .interceptors.loguru import nurse_andrea_loguru_sink
     return nurse_andrea_loguru_sink
 
-__version__ = "0.2.1"
+__version__ = "1.0.0"
 __all__ = [
-    "configure", "get_config", "is_enabled", "get_client",
+    "configure", "get_config", "is_enabled", "get_client", "NurseAndreaConfig",
     "django_middleware", "fastapi_middleware", "flask_init_app",
     "intercept_logging", "structlog_processor", "loguru_sink",
     "deploy",
+    "NurseAndreaError", "ConfigurationError", "MigrationError",
+    "is_valid_slug", "SLUG_RULES_HUMAN",
+    "detect_environment", "SUPPORTED_ENVIRONMENTS",
     "__version__",
 ]

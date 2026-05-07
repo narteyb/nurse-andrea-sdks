@@ -146,7 +146,9 @@ func flush() {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+cfg.Token)
+	req.Header.Set("Authorization", "Bearer "+cfg.OrgToken)
+	req.Header.Set("X-NurseAndrea-Workspace", cfg.WorkspaceSlug)
+	req.Header.Set("X-NurseAndrea-Environment", cfg.Environment)
 
 	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 	if err != nil {

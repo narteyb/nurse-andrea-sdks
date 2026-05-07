@@ -4,7 +4,11 @@ RSpec.describe NurseAndrea::ComponentTelemetry do
   subject(:telemetry) { described_class.new }
 
   before do
-    NurseAndrea.configure { |c| c.api_key = "test" }
+    NurseAndrea.configure do |c|
+      c.org_token      = "org_test"
+      c.workspace_slug = "test-workspace"
+      c.environment    = "development"
+    end
   end
 
   describe "#record_query" do

@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch, MagicMock
 
-from nurse_andrea.configuration import configure
+from nurse_andrea.configuration import configure, _reset_for_tests
 from nurse_andrea.deploy import deploy
 
 
@@ -18,7 +18,15 @@ def _captured(post_mock):
 
 
 def setup_function(_):
-    configure(token="test-token", host="http://localhost:4500", enabled=True, flush_interval_seconds=9999)
+    _reset_for_tests()
+    configure(
+        org_token="org_test_token",
+        workspace_slug="checkout",
+        environment="development",
+        host="http://localhost:4500",
+        enabled=True,
+        flush_interval_seconds=9999,
+    )
 
 
 def test_posts_to_deploy_endpoint_with_version():
@@ -80,7 +88,13 @@ def test_returns_false_when_version_blank():
 
 
 def test_returns_false_when_disabled():
-    configure(token="", enabled=False)
+    _reset_for_tests()
+    configure(
+        org_token="org_test_token",
+        workspace_slug="checkout",
+        environment="development",
+        enabled=False,
+    )
     with patch("nurse_andrea.deploy.httpx.Client") as ClientCls:
         result = deploy(version="1.0.0")
         assert result is False

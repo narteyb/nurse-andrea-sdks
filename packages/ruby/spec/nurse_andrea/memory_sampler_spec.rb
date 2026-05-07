@@ -1,7 +1,13 @@
 require "spec_helper"
 
 RSpec.describe NurseAndrea::MemorySampler do
-  before { NurseAndrea.configure { |c| c.api_key = "test" } }
+  before do
+    NurseAndrea.configure do |c|
+      c.org_token      = "org_test"
+      c.workspace_slug = "test-workspace"
+      c.environment    = "development"
+    end
+  end
   after { described_class.stop }
 
   describe ".rss_bytes" do

@@ -78,8 +78,10 @@ def _flush() -> None:
         import httpx
         with httpx.Client(timeout=5.0) as http:
             r = http.post(url, json=payload, headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {config.token}",
+                "Content-Type":              "application/json",
+                "Authorization":             f"Bearer {config.org_token}",
+                "X-NurseAndrea-Workspace":   config.workspace_slug,
+                "X-NurseAndrea-Environment": config.environment,
             })
             if r.status_code >= 400:
                 sys.stderr.write(f"[NurseAndrea] Trace export → {r.status_code}\n")

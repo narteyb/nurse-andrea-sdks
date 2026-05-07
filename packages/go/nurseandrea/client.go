@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+const (
+	rejectionWarningThreshold = 5
+)
+
+var rejectionStatuses = map[int]bool{401: true, 403: true, 422: true, 429: true}
+
 // LogEntry represents a single log event to ship.
 type LogEntry struct {
 	Level       string                 `json:"level"`
@@ -42,6 +48,10 @@ type Client struct {
 	stopCh      chan struct{}
 	stopped     bool
 	httpClient  *http.Client
+
+	rejectionMu            sync.Mutex
+	consecutiveRejections  int
+	warnedForError         string
 }
 
 var (
@@ -73,6 +83,99 @@ func (c *Client) Stop() {
 
 	close(c.stopCh)
 	c.flush()
+}
+
+// ResetRejectionState is exposed for tests that exercise the rejection counter.
+func (c *Client) ResetRejectionState() {
+	c.rejectionMu.Lock()
+	defer c.rejectionMu.Unlock()
+	c.consecutiveRejections = 0
+	c.warnedForError = ""
+}
+
+// BuildHeaders returns the new 1.0 auth contract headers.
+func (c *Client) BuildHeaders() map[string]string {
+	cfg := GetConfig()
+	return map[string]string{
+		"Content-Type":              "application/json",
+		"Authorization":             "Bearer " + cfg.OrgToken,
+		"X-NurseAndrea-Workspace":   cfg.WorkspaceSlug,
+		"X-NurseAndrea-Environment": cfg.Environment,
+		"X-NurseAndrea-SDK":         SDKLanguage + "/" + Version,
+	}
+}
+
+// HandleResponse interprets the HTTP status + body for rejection-counter
+// bookkeeping. Exposed for tests.
+func (c *Client) HandleResponse(statusCode int, body []byte, url string) {
+	if statusCode >= 200 && statusCode < 300 {
+		c.rejectionMu.Lock()
+		c.consecutiveRejections = 0
+		c.warnedForError = ""
+		c.rejectionMu.Unlock()
+		return
+	}
+
+	if !rejectionStatuses[statusCode] {
+		fmt.Fprintf(os.Stderr, "[NurseAndrea] POST %s -> %d\n", url, statusCode)
+		return
+	}
+
+	c.rejectionMu.Lock()
+	defer c.rejectionMu.Unlock()
+	c.consecutiveRejections++
+	if c.consecutiveRejections < rejectionWarningThreshold {
+		return
+	}
+
+	var parsed struct {
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	_ = json.Unmarshal(body, &parsed)
+
+	if c.warnedForError == parsed.Error {
+		return
+	}
+	c.warnedForError = parsed.Error
+
+	cfg := GetConfig()
+	errorCode := parsed.Error
+	if errorCode == "" {
+		errorCode = "(unknown)"
+	}
+	details := ""
+	if parsed.Message != "" {
+		details = " Details: " + parsed.Message
+	}
+	fmt.Fprintf(os.Stderr,
+		"[NurseAndrea] Ingest rejected (%d+ consecutive). Status: %d Error: %s. %s%s\n",
+		rejectionWarningThreshold, statusCode, errorCode,
+		guidanceFor(parsed.Error, cfg), details)
+}
+
+func guidanceFor(errorCode string, cfg Config) string {
+	switch errorCode {
+	case "invalid_org_token":
+		return "Check NURSE_ANDREA_ORG_TOKEN."
+	case "workspace_rejected":
+		return "Restore the workspace in the dashboard or change WorkspaceSlug."
+	case "workspace_limit_exceeded":
+		return "Org has reached its workspace limit. Reject unused workspaces or upgrade plan."
+	case "auto_create_disabled":
+		return "Auto-create disabled. Create the workspace explicitly in the dashboard before ingesting."
+	case "environment_not_accepted_by_this_install":
+		return fmt.Sprintf("Environment %q not accepted by NurseAndrea at %s. Check NURSE_ANDREA_HOST.",
+			cfg.Environment, cfg.Host)
+	case "invalid_workspace_slug":
+		return SlugRulesHuman
+	case "similar_slug_exists":
+		return "A similar slug already exists in this org. Did you mean an existing one?"
+	case "creation_rate_limit_exceeded", "rate_limited":
+		return "Workspace creation rate limit hit. Existing workspaces still ingesting normally."
+	default:
+		return ""
+	}
 }
 
 func (c *Client) flushLoop() {
@@ -109,7 +212,7 @@ func (c *Client) EnqueueLog(level, message string, metadata map[string]interface
 		Timestamp:   time.Now().UTC().Format(time.RFC3339Nano),
 		Service:     cfg.ServiceName,
 		SDKVersion:  Version,
-		SDKLanguage: "go",
+		SDKLanguage: SDKLanguage,
 		Metadata:    metadata,
 	}
 	c.mu.Lock()
@@ -137,7 +240,7 @@ func (c *Client) EnqueueMetric(name string, value float64, unit string, tags map
 		Unit:        unit,
 		Timestamp:   time.Now().UTC().Format(time.RFC3339Nano),
 		SDKVersion:  Version,
-		SDKLanguage: "go",
+		SDKLanguage: SDKLanguage,
 		Tags:        tags,
 	}
 	c.mu.Lock()
@@ -160,14 +263,15 @@ func (c *Client) flush() {
 	c.metricQueue = nil
 	c.mu.Unlock()
 
-	cfg := GetConfig()
-	headers := map[string]string{
-		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.Token,
-	}
+	headers := c.BuildHeaders()
 
 	if len(logs) > 0 {
-		payload := map[string]interface{}{"logs": logs}
+		payload := map[string]interface{}{
+			"services":     []string{GetConfig().ServiceName},
+			"sdk_version":  Version,
+			"sdk_language": SDKLanguage,
+			"logs":         logs,
+		}
 		if err := c.post(IngestURL(), headers, payload); err != nil {
 			c.mu.Lock()
 			c.logQueue = append(logs, c.logQueue...)
@@ -176,7 +280,11 @@ func (c *Client) flush() {
 	}
 
 	if len(metrics) > 0 {
-		payload := map[string]interface{}{"metrics": metrics}
+		payload := map[string]interface{}{
+			"sdk_version":  Version,
+			"sdk_language": SDKLanguage,
+			"metrics":      metrics,
+		}
 		if err := c.post(MetricsURL(), headers, payload); err != nil {
 			c.mu.Lock()
 			c.metricQueue = append(metrics, c.metricQueue...)
@@ -205,13 +313,7 @@ func (c *Client) post(url string, headers map[string]string, payload interface{}
 		return fmt.Errorf("nurseandrea: http error: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
-		snippet := string(respBody)
-		if len(snippet) > 200 {
-			snippet = snippet[:200]
-		}
-		fmt.Fprintf(os.Stderr, "[NurseAndrea] POST %s → %d: %s\n", url, resp.StatusCode, snippet)
-	}
+	respBody, _ := io.ReadAll(resp.Body)
+	c.HandleResponse(resp.StatusCode, respBody, url)
 	return nil
 }

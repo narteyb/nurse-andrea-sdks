@@ -5,7 +5,11 @@ RSpec.describe NurseAndrea::InstrumentationSubscriber do
   subject(:subscriber) { described_class.new }
 
   before do
-    NurseAndrea.configure { |c| c.api_key = "test" }
+    NurseAndrea.configure do |c|
+      c.org_token      = "org_test"
+      c.workspace_slug = "test-workspace"
+      c.environment    = "development"
+    end
     NurseAndrea.instance_variable_set(:@component_discoveries, [])
   end
 

@@ -1,3 +1,38 @@
+## [1.0.0] - 2026-05-06
+
+### Breaking
+- Replaced `api_key` / `token` / `ingest_token` with three required
+  fields: `org_token`, `workspace_slug`, `environment`. Old field
+  setters and getters now raise `NurseAndrea::MigrationError` at boot
+  with a link to the migration guide. There is no compatibility shim.
+- New required request headers: `Authorization: Bearer <org_token>`,
+  `X-NurseAndrea-Workspace: <slug>`, `X-NurseAndrea-Environment: <env>`.
+  Single-token-per-workspace auth is gone.
+- `environment` must be one of `production`, `staging`, `development`.
+  Anything else raises a `ConfigurationError` at `validate!` time.
+  `RAILS_ENV=test` auto-detects to `production` with a one-time warning.
+- `workspace_slug` is validated locally (lowercase a-z, 0-9, hyphens;
+  must start with a letter; 1-64 chars). Reserved-word enforcement
+  remains server-authoritative.
+
+### Added
+- `NurseAndrea::SlugValidator` — local format validation.
+- `NurseAndrea::EnvironmentDetector` — auto-detection from `RAILS_ENV`
+  / `RACK_ENV` with a one-time stderr warning on unsupported values.
+- `NurseAndrea::MigrationError` (descends from `ConfigurationError`).
+- Structured rejection handling: after 5 consecutive `401`/`403`/`422`/
+  `429` responses with the same error code, the SDK prints one stderr
+  warning per process lifecycle with actionable guidance keyed off the
+  server's `error` field (e.g. `invalid_org_token`, `workspace_rejected`,
+  `auto_create_disabled`, `similar_slug_exists`).
+- `X-NurseAndrea-SDK: ruby/<version>` identity header on every request.
+
+### Migration
+- See https://docs.nurseandrea.io/sdk/migration. Short version: replace
+  the single `c.token` line with `c.org_token`, `c.workspace_slug`,
+  `c.environment`. Pull `org_token` from the org settings page (was
+  `account.token`); pick a slug for each app/service.
+
 ## [0.1.7] - 2026-04-06
 
 ### Added

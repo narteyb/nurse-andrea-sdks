@@ -17,11 +17,15 @@ func configureFor(t *testing.T, server *httptest.Server) {
 	t.Helper()
 	resetConfig()
 	enabled := true
-	nurseandrea.Configure(nurseandrea.Config{
-		Token:   "test-token",
-		Host:    server.URL,
-		Enabled: &enabled,
-	})
+	if err := nurseandrea.Configure(nurseandrea.Config{
+		OrgToken:      "org_test_token",
+		WorkspaceSlug: "checkout",
+		Environment:   "development",
+		Host:          server.URL,
+		Enabled:       &enabled,
+	}); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
 }
 
 // captureDeployRequest returns a server that records the body of the
@@ -123,7 +127,14 @@ func TestDeployReturnsFalseWhenVersionBlank(t *testing.T) {
 func TestDeployReturnsFalseWhenDisabled(t *testing.T) {
 	resetConfig()
 	disabled := false
-	nurseandrea.Configure(nurseandrea.Config{Token: "test-token", Enabled: &disabled})
+	if err := nurseandrea.Configure(nurseandrea.Config{
+		OrgToken:      "org_test_token",
+		WorkspaceSlug: "checkout",
+		Environment:   "development",
+		Enabled:       &disabled,
+	}); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
 	if nurseandrea.Deploy("1.0.0") {
 		t.Error("expected Deploy to return false when SDK disabled")
 	}

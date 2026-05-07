@@ -5,8 +5,10 @@ RSpec.describe NurseAndrea::Deploy do
 
   before do
     NurseAndrea.configure do |c|
-      c.api_key = "test-token"
-      c.host    = "http://localhost:4500"
+      c.org_token      = "org_test_token"
+      c.workspace_slug = "test-workspace"
+      c.environment    = "development"
+      c.host           = "http://localhost:4500"
     end
     allow(NurseAndrea::HttpClient).to receive(:new).and_return(http)
   end

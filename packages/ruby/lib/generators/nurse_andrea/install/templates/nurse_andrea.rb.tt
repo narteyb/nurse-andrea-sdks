@@ -1,16 +1,24 @@
 # NurseAndrea Observability SDK
 # Docs: https://nurseandrea.io/docs
 #
-# Environment variables required:
-#   NURSE_ANDREA_TOKEN — your account ingest token (from nurseandrea.io/dashboard/settings)
-#   NURSE_ANDREA_HOST  — NurseAndrea endpoint (default: https://nurseandrea.io)
-#                        Set to http://localhost:4500 for local development
-#                        Set to https://staging.nurseandrea.io for staging
+# Required environment variable:
+#   NURSE_ANDREA_ORG_TOKEN — your organization's ingest token
+#                            (from nurseandrea.io/dashboard/settings)
+# Optional environment variables:
+#   NURSE_ANDREA_HOST      — NurseAndrea endpoint (default: https://nurseandrea.io)
+#                            Set to http://localhost:4500 for local development
+#                            Set to https://staging.nurseandrea.io for staging
+#
+# workspace_slug identifies which workspace within your org receives ingest.
+# Lowercase letters, numbers, hyphens; starts with a letter; 1-64 chars.
+# A new slug auto-creates as a pending workspace on first ingest.
 
 NurseAndrea.configure do |c|
-  c.token        = ENV["NURSE_ANDREA_TOKEN"]
-  c.host         = ENV.fetch("NURSE_ANDREA_HOST", "https://nurseandrea.io")
-  c.service_name = ENV.fetch("NURSE_ANDREA_SERVICE_NAME", "<%= app_name %>")
-  c.enabled      = !Rails.env.test?
-  c.log_level    = :warn  # Set to :debug to see all intercepted logs
+  c.org_token      = ENV["NURSE_ANDREA_ORG_TOKEN"]
+  c.workspace_slug = "<%= app_name %>"
+  c.environment    = ENV.fetch("RAILS_ENV", "production")
+  c.host           = ENV.fetch("NURSE_ANDREA_HOST", "https://nurseandrea.io")
+  c.service_name   = ENV.fetch("NURSE_ANDREA_SERVICE_NAME", "<%= app_name %>")
+  c.enabled        = !Rails.env.test?
+  c.log_level      = :warn  # Set to :debug to see all intercepted logs
 end

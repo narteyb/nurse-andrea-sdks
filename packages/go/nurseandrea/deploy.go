@@ -68,8 +68,11 @@ func Deploy(version string, opts ...DeployOptions) bool {
 		fmt.Fprintf(os.Stderr, "[NurseAndrea] deploy() build error: %s\n", err)
 		return false
 	}
+	cfg := GetConfig()
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+GetConfig().Token)
+	req.Header.Set("Authorization", "Bearer "+cfg.OrgToken)
+	req.Header.Set("X-NurseAndrea-Workspace", cfg.WorkspaceSlug)
+	req.Header.Set("X-NurseAndrea-Environment", cfg.Environment)
 
 	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {

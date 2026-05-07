@@ -3,8 +3,10 @@ require "spec_helper"
 RSpec.describe NurseAndrea::ContinuousScanner do
   before do
     NurseAndrea.configure do |c|
-      c.api_key = "test"
-      c.host    = "http://localhost:4500"
+      c.org_token      = "org_test"
+      c.workspace_slug = "test-workspace"
+      c.environment    = "development"
+      c.host           = "http://localhost:4500"
     end
     described_class.stop!
     NurseAndrea.instance_variable_set(:@component_discoveries, [])

@@ -1,5 +1,16 @@
+import { ConfigurationError, MigrationError } from "./errors"
+import { isValidSlug, SLUG_RULES_HUMAN } from "./slug-validator"
+import {
+  SUPPORTED_ENVIRONMENTS,
+  detectEnvironment,
+  type Environment,
+} from "./environment-detector"
+import { SDK_VERSION, SDK_LANGUAGE } from "./version"
+
 export interface NurseAndreaConfig {
-  token: string
+  orgToken: string
+  workspaceSlug: string
+  environment: Environment
   host: string
   serviceName: string
   enabled: boolean
@@ -9,29 +20,64 @@ export interface NurseAndreaConfig {
 }
 
 const DEFAULT_HOST = "https://nurseandrea.io"
-const SDK_VERSION  = "0.2.3"
+const LEGACY_FIELDS = ["apiKey", "token", "ingestToken"] as const
 
 let _config: NurseAndreaConfig | null = null
 let _bannerPrinted = false
 
-export function configure(options: Partial<NurseAndreaConfig>): void {
+function migrationMessage(field: string): string {
+  return (
+    `${field} is no longer supported in NurseAndrea SDK 1.0. ` +
+    "Migrate to orgToken + workspaceSlug + environment. " +
+    "See https://docs.nurseandrea.io/sdk/migration"
+  )
+}
+
+export function configure(options: Partial<NurseAndreaConfig> & Record<string, unknown>): void {
+  for (const legacy of LEGACY_FIELDS) {
+    if (options[legacy] !== undefined) {
+      throw new MigrationError(migrationMessage(legacy))
+    }
+  }
+
+  const orgToken = options.orgToken ?? process.env.NURSE_ANDREA_ORG_TOKEN ?? ""
+  const workspaceSlug = options.workspaceSlug ?? ""
+  const environment = (options.environment ?? detectEnvironment()) as Environment
+  const host = options.host ?? process.env.NURSE_ANDREA_HOST ?? DEFAULT_HOST
+
+  if (!orgToken) {
+    throw new ConfigurationError("orgToken is required")
+  }
+  if (!workspaceSlug) {
+    throw new ConfigurationError("workspaceSlug is required")
+  }
+  if (!environment) {
+    throw new ConfigurationError("environment is required")
+  }
+  if (!(SUPPORTED_ENVIRONMENTS as readonly string[]).includes(environment)) {
+    throw new ConfigurationError(
+      `environment must be one of ${SUPPORTED_ENVIRONMENTS.join(", ")} (got ${JSON.stringify(environment)})`
+    )
+  }
+  if (!isValidSlug(workspaceSlug)) {
+    throw new ConfigurationError(
+      `workspaceSlug ${JSON.stringify(workspaceSlug)} is invalid. ${SLUG_RULES_HUMAN}`
+    )
+  }
+
   _config = {
-    token:           options.token           ?? process.env.NURSE_ANDREA_INGEST_TOKEN ?? process.env.NURSE_ANDREA_TOKEN ?? "",
-    host:            options.host            ?? process.env.NURSE_ANDREA_HOST  ?? DEFAULT_HOST,
-    serviceName:     options.serviceName     ?? process.env.NURSE_ANDREA_SERVICE_NAME ?? detectServiceName(),
-    enabled:         options.enabled         ?? process.env.NODE_ENV !== "test",
-    logLevel:        options.logLevel        ?? "warn",
+    orgToken,
+    workspaceSlug,
+    environment,
+    host,
+    serviceName:     options.serviceName ?? process.env.NURSE_ANDREA_SERVICE_NAME ?? detectServiceName(),
+    enabled:         options.enabled ?? process.env.NODE_ENV !== "test",
+    logLevel:        options.logLevel ?? "warn",
     flushIntervalMs: options.flushIntervalMs ?? 5000,
-    batchSize:       options.batchSize       ?? 100,
+    batchSize:       options.batchSize ?? 100,
   }
 
-  if (!_config.token) {
-    process.stderr.write("[NurseAndrea] No token configured. Set NURSE_ANDREA_INGEST_TOKEN or pass token to configure(). Monitoring disabled.\n")
-    _config.enabled = false
-    return
-  }
-
-  // Defer require to break the circular import (client.ts imports from this file).
+  // Defer require to break circular import (client.ts imports from this file).
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { client } = require("./client") as typeof import("./client")
   client.start()
@@ -42,7 +88,8 @@ export function configure(options: Partial<NurseAndreaConfig>): void {
   if (!_bannerPrinted) {
     _bannerPrinted = true
     process.stdout.write(
-      `[NurseAndrea] Shipping to ${_config.host} as ${_config.serviceName} (node sdk v${SDK_VERSION})\n`
+      `[NurseAndrea] Shipping to ${_config.host} as ${_config.serviceName} ` +
+      `(${SDK_LANGUAGE} sdk v${SDK_VERSION}, workspace=${_config.workspaceSlug}/${_config.environment})\n`
     )
 
     const stop = () => client.stop()
@@ -53,13 +100,15 @@ export function configure(options: Partial<NurseAndreaConfig>): void {
 
 export function getConfig(): NurseAndreaConfig {
   if (!_config) {
-    configure({})
+    throw new ConfigurationError(
+      "NurseAndrea is not configured. Call configure({ orgToken, workspaceSlug, environment }) at startup."
+    )
   }
-  return _config!
+  return _config
 }
 
 export function isEnabled(): boolean {
-  return getConfig().enabled && !!getConfig().token
+  return !!_config && _config.enabled && !!_config.orgToken
 }
 
 export function ingestUrl(): string {
@@ -70,8 +119,14 @@ export function metricsUrl(): string {
   return `${getConfig().host.replace(/\/$/, "")}/api/v1/metrics`
 }
 
+export function _resetForTests(): void {
+  _config = null
+  _bannerPrinted = false
+}
+
 function detectServiceName(): string {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pkg = require(process.cwd() + "/package.json")
     return pkg.name ?? "node-app"
   } catch {

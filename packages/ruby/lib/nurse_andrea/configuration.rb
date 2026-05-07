@@ -1,6 +1,14 @@
 module NurseAndrea
   class Configuration
-    attr_accessor :api_key, :host, :timeout, :log_level, :batch_size,
+    SUPPORTED_ENVIRONMENTS = EnvironmentDetector::SUPPORTED
+
+    MIGRATION_MESSAGE =
+      "%<field>s is no longer supported in NurseAndrea SDK 1.0. " \
+      "Migrate to org_token + workspace_slug + environment. " \
+      "See https://docs.nurseandrea.io/sdk/migration"
+
+    attr_accessor :org_token, :workspace_slug, :environment, :host,
+                  :timeout, :log_level, :batch_size,
                   :flush_interval, :backfill_hours, :log_file_path,
                   :enabled, :debug, :service_name,
                   :sdk_version, :sdk_language,
@@ -14,6 +22,7 @@ module NurseAndrea
 
     def initialize
       @host           = DEFAULT_HOST
+      @environment    = EnvironmentDetector.detect
       @timeout        = 5
       @log_level      = :debug
       @batch_size     = 100
@@ -35,13 +44,19 @@ module NurseAndrea
       @service_discovery  = true
       @auto_connect       = false
       @disable_continuous_scan  = false
-      @continuous_scan_interval = 5 * 60  # seconds
+      @continuous_scan_interval = 5 * 60
     end
 
-    alias_method :token,  :api_key
-    alias_method :token=, :api_key=
+    %i[api_key token ingest_token].each do |legacy|
+      define_method(legacy) do
+        raise MigrationError, format(MIGRATION_MESSAGE, field: legacy)
+      end
 
-    # All endpoint URLs derived from host
+      define_method("#{legacy}=") do |_|
+        raise MigrationError, format(MIGRATION_MESSAGE, field: legacy)
+      end
+    end
+
     def ingest_url    = "#{normalised_host}/api/v1/ingest"
     def metrics_url   = "#{normalised_host}/api/v1/metrics"
     def traces_url    = "#{normalised_host}/api/v1/traces"
@@ -57,29 +72,60 @@ module NurseAndrea
     end
 
     def valid?
-      !api_key.nil? && !api_key.to_s.strip.empty? && !host.nil?
+      !blank?(org_token) &&
+        !blank?(workspace_slug) &&
+        !blank?(environment) &&
+        SUPPORTED_ENVIRONMENTS.include?(environment) &&
+        SlugValidator.valid?(workspace_slug) &&
+        !host.nil?
     end
 
     def validate!
-      unless valid?
-        raise NurseAndrea::ConfigurationError,
-          "[NurseAndrea] Configuration invalid. " \
-          "Set NURSE_ANDREA_TOKEN and NURSE_ANDREA_HOST, then call " \
-          "NurseAndrea.configure in config/initializers/nurse_andrea.rb"
+      raise_config_error("org_token is required")      if blank?(org_token)
+      raise_config_error("workspace_slug is required") if blank?(workspace_slug)
+      raise_config_error("environment is required")    if blank?(environment)
+
+      unless SUPPORTED_ENVIRONMENTS.include?(environment)
+        raise_config_error(
+          "environment must be one of #{SUPPORTED_ENVIRONMENTS.join(', ')} " \
+          "(got #{environment.inspect})"
+        )
       end
+
+      unless SlugValidator.valid?(workspace_slug)
+        raise_config_error(
+          "workspace_slug #{workspace_slug.inspect} is invalid. " \
+          "#{SlugValidator::HUMAN_READABLE_RULES}"
+        )
+      end
+
       self
     end
 
     private
+
+    def blank?(value)
+      value.nil? || value.to_s.strip.empty?
+    end
+
+    def raise_config_error(message)
+      raise ConfigurationError, "[NurseAndrea] #{message}"
+    end
 
     def normalised_host
       host.to_s.chomp("/")
     end
 
     def default_service_name
-      ENV["RAILWAY_SERVICE_NAME"].then { |v| v&.strip.presence } ||
-        ENV["NURSE_ANDREA_SERVICE_NAME"].then { |v| v&.strip.presence } ||
-        rails_app_name
+      first_present_env("RAILWAY_SERVICE_NAME", "NURSE_ANDREA_SERVICE_NAME") || rails_app_name
+    end
+
+    def first_present_env(*names)
+      names.each do |n|
+        v = ENV[n].to_s.strip
+        return v unless v.empty?
+      end
+      nil
     end
 
     def rails_app_name

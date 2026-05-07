@@ -1,48 +1,89 @@
-import { configure, getConfig, ingestUrl, metricsUrl, isEnabled } from "../src/configuration"
+import {
+  configure,
+  getConfig,
+  ingestUrl,
+  metricsUrl,
+  isEnabled,
+  _resetForTests,
+} from "../src/configuration"
+import { ConfigurationError, MigrationError } from "../src/errors"
+
+const validConfig = () => ({
+  orgToken: "org_test_token",
+  workspaceSlug: "checkout",
+  environment: "development" as const,
+})
 
 describe("Configuration", () => {
   beforeEach(() => {
-    // Force re-configure
-    configure({ token: "reset" })
+    _resetForTests()
   })
 
-  it("defaults host to production NurseAndrea", () => {
-    configure({ token: "test-token" })
-    expect(getConfig().host).toBe("https://nurseandrea.io")
+  describe("happy path", () => {
+    it("defaults host to production NurseAndrea", () => {
+      configure(validConfig())
+      expect(getConfig().host).toBe("https://nurseandrea.io")
+    })
+
+    it("derives ingestUrl from host", () => {
+      configure({ ...validConfig(), host: "http://localhost:4500" })
+      expect(ingestUrl()).toBe("http://localhost:4500/api/v1/ingest")
+    })
+
+    it("strips trailing slash from host", () => {
+      configure({ ...validConfig(), host: "https://staging.nurseandrea.io/" })
+      expect(metricsUrl()).toBe("https://staging.nurseandrea.io/api/v1/metrics")
+    })
+
+    it("accepts serviceName override", () => {
+      configure({ ...validConfig(), serviceName: "my-app" })
+      expect(getConfig().serviceName).toBe("my-app")
+    })
+
+    it("reads orgToken from NURSE_ANDREA_ORG_TOKEN env var when not in options", () => {
+      process.env.NURSE_ANDREA_ORG_TOKEN = "env-token"
+      configure({ workspaceSlug: "checkout", environment: "development" })
+      expect(getConfig().orgToken).toBe("env-token")
+      delete process.env.NURSE_ANDREA_ORG_TOKEN
+    })
+
+    it("isEnabled returns true when fully configured and enabled", () => {
+      configure({ ...validConfig(), enabled: true })
+      expect(isEnabled()).toBe(true)
+    })
   })
 
-  it("derives ingestUrl from host", () => {
-    configure({ token: "test-token", host: "http://localhost:4500" })
-    expect(ingestUrl()).toBe("http://localhost:4500/api/v1/ingest")
+  describe("validation", () => {
+    it("throws when orgToken is missing", () => {
+      expect(() => configure({ workspaceSlug: "ok", environment: "development" }))
+        .toThrow(/orgToken is required/)
+    })
+
+    it("throws when workspaceSlug is missing", () => {
+      expect(() => configure({ orgToken: "x", environment: "development" }))
+        .toThrow(/workspaceSlug is required/)
+    })
+
+    it("throws when environment is unsupported", () => {
+      expect(() => configure({ ...validConfig(), environment: "qa" as never }))
+        .toThrow(/environment must be one of/)
+    })
+
+    it("throws when workspaceSlug is invalid format", () => {
+      expect(() => configure({ ...validConfig(), workspaceSlug: "Bad_Slug" }))
+        .toThrow(/workspaceSlug.*invalid.*lowercase/)
+    })
   })
 
-  it("strips trailing slash from host", () => {
-    configure({ token: "test-token", host: "https://staging.nurseandrea.io/" })
-    expect(metricsUrl()).toBe("https://staging.nurseandrea.io/api/v1/metrics")
-  })
+  describe("migration errors", () => {
+    it.each(["apiKey", "token", "ingestToken"])("throws MigrationError for legacy field %s", (field) => {
+      expect(() => configure({ [field]: "x" } as never)).toThrow(MigrationError)
+      expect(() => configure({ [field]: "x" } as never)).toThrow(/no longer supported/)
+    })
 
-  it("disables monitoring when token is missing", () => {
-    configure({ token: "" })
-    expect(getConfig().enabled).toBe(false)
-  })
-
-  it("reads from env vars when not explicitly configured", () => {
-    process.env.NURSE_ANDREA_TOKEN = "env-token"
-    process.env.NURSE_ANDREA_HOST = "https://staging.nurseandrea.io"
-    configure({})
-    expect(getConfig().token).toBe("env-token")
-    expect(getConfig().host).toBe("https://staging.nurseandrea.io")
-    delete process.env.NURSE_ANDREA_TOKEN
-    delete process.env.NURSE_ANDREA_HOST
-  })
-
-  it("accepts serviceName override", () => {
-    configure({ token: "test-token", serviceName: "my-app" })
-    expect(getConfig().serviceName).toBe("my-app")
-  })
-
-  it("isEnabled returns false when no token", () => {
-    configure({ token: "" })
-    expect(isEnabled()).toBe(false)
+    it("MigrationError descends from ConfigurationError", () => {
+      const err = new MigrationError("test")
+      expect(err).toBeInstanceOf(ConfigurationError)
+    })
   })
 })

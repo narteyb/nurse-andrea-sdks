@@ -1,4 +1,7 @@
 require "nurse_andrea/version"
+require "nurse_andrea/errors"
+require "nurse_andrea/slug_validator"
+require "nurse_andrea/environment_detector"
 require "nurse_andrea/configuration"
 require "nurse_andrea/http_client"
 require "nurse_andrea/log_interceptor"
@@ -23,8 +26,6 @@ require "nurse_andrea/railtie" if defined?(Rails::Railtie)
 require "nurse_andrea/engine"  if defined?(Rails::Engine)
 
 module NurseAndrea
-  class ConfigurationError < StandardError; end
-
   class << self
     def configure
       yield(config)

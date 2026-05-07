@@ -37,11 +37,14 @@ export async function deploy(input: DeployPayload): Promise<boolean> {
   }
 
   try {
+    const config = getConfig()
     const res = await fetch(deployUrl(), {
       method:  "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization:  `Bearer ${getConfig().token}`,
+        "Content-Type":              "application/json",
+        "Authorization":             `Bearer ${config.orgToken}`,
+        "X-NurseAndrea-Workspace":   config.workspaceSlug,
+        "X-NurseAndrea-Environment": config.environment,
       },
       body: JSON.stringify(body),
     })

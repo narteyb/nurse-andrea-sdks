@@ -45,13 +45,14 @@ def deploy(
 
     config = get_config()
     url = f"{config.host.rstrip('/')}/api/v1/deploy"
+    headers = {
+        "Authorization":             f"Bearer {config.org_token}",
+        "X-NurseAndrea-Workspace":   config.workspace_slug,
+        "X-NurseAndrea-Environment": config.environment,
+    }
     try:
         with httpx.Client(timeout=10.0) as http:
-            r = http.post(
-                url,
-                json=payload,
-                headers={"Authorization": f"Bearer {config.token}"},
-            )
+            r = http.post(url, json=payload, headers=headers)
         if 200 <= r.status_code < 300:
             return True
         sys.stderr.write(f"[NurseAndrea] deploy() POST {url} -> {r.status_code}\n")
