@@ -2,6 +2,11 @@ require "rails/railtie"
 
 module NurseAndrea
   class Railtie < Rails::Railtie
+    # Sprint A D6 (GAP-10) — per-failure-mode boot messages. The
+    # message map + resolver live in NurseAndrea::BootDiagnostics so
+    # they can be unit-tested without booting Rails. The Railtie
+    # just calls into it from each warn-and-disable branch.
+
     # Runs after ALL initializers — including config/initializers/
     # This means NurseAndrea.configure works from config/initializers/ as expected
     initializer "nurse_andrea.wrap_logger", after: :load_config_initializers do
@@ -14,9 +19,7 @@ module NurseAndrea
                           "(host: #{NurseAndrea.config.host}, " \
                           "service: #{NurseAndrea.config.service_name || 'auto'})")
       else
-        warn "[NurseAndrea] Configuration incomplete at logger wrap time — " \
-             "monitoring disabled. Ensure NurseAndrea.configure is called " \
-             "in config/initializers/nurse_andrea.rb with a valid token."
+        warn NurseAndrea::BootDiagnostics.message_for(NurseAndrea.config)
       end
     end
 
@@ -25,8 +28,7 @@ module NurseAndrea
         app.middleware.use NurseAndrea::MetricsMiddleware
         Rails.logger.info("[NurseAndrea] MetricsMiddleware inserted")
       else
-        warn "[NurseAndrea] Skipping MetricsMiddleware — no token configured. " \
-             "Ensure NurseAndrea.configure is called in config/initializers/nurse_andrea.rb"
+        warn NurseAndrea::BootDiagnostics.message_for(NurseAndrea.config)
       end
     end
 

@@ -21,6 +21,7 @@ require "nurse_andrea/memory_sampler"
 require "nurse_andrea/deploy"
 require "nurse_andrea/self_filter"
 require "nurse_andrea/continuous_scanner"
+require "nurse_andrea/boot_diagnostics"
 
 require "nurse_andrea/railtie" if defined?(Rails::Railtie)
 require "nurse_andrea/engine"  if defined?(Rails::Engine)

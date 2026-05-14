@@ -72,12 +72,27 @@ module NurseAndrea
     end
 
     def valid?
-      !blank?(org_token) &&
-        !blank?(workspace_slug) &&
-        !blank?(environment) &&
-        SUPPORTED_ENVIRONMENTS.include?(environment) &&
-        SlugValidator.valid?(workspace_slug) &&
-        !host.nil?
+      validation_diagnostic.nil?
+    end
+
+    # Sprint A D6 (GAP-10) — returns nil when configuration is valid,
+    # otherwise returns a symbol identifying the first failure mode.
+    # The Railtie maps these symbols to operator-actionable stderr
+    # messages so a missing-org_token miss tells the operator to
+    # set the env var rather than emitting the generic
+    # "Configuration incomplete at logger wrap time" line.
+    #
+    # Order matters: most-likely-missing field first. Operators
+    # debugging from logs benefit from the first message being the
+    # most common cause.
+    def validation_diagnostic
+      return :missing_org_token      if blank?(org_token)
+      return :missing_workspace_slug if blank?(workspace_slug)
+      return :missing_environment    if blank?(environment)
+      return :invalid_environment    unless SUPPORTED_ENVIRONMENTS.include?(environment)
+      return :invalid_workspace_slug unless SlugValidator.valid?(workspace_slug)
+      return :missing_host           if host.nil?
+      nil
     end
 
     def validate!
