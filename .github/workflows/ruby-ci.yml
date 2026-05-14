@@ -49,6 +49,21 @@ jobs:
         working-directory: packages/ruby
         run: bundle exec bundler-audit check --update
 
+      # Sprint A D5 (GAP-05) — doc-sync. README must reference the
+      # VERSION constant from lib/nurse_andrea/version.rb. Soft check —
+      # surfaces a workflow warning rather than failing the build,
+      # since READMEs may legitimately defer version mentions to
+      # CHANGELOG.md.
+      - name: Doc-sync — README references current version
+        working-directory: packages/ruby
+        run: |
+          VERSION=$(ruby -e 'require_relative "lib/nurse_andrea/version"; puts NurseAndrea::VERSION')
+          if grep -qF "$VERSION" README.md; then
+            echo "README.md references version $VERSION ✓"
+          else
+            echo "::warning::README.md does not reference current version $VERSION"
+          fi
+
       # Sprint A D3 (GAP-03) — host-app fixture smoke. Boots a minimal
       # Rails::Application that depends on the local gem via path:,
       # mounts NurseAndrea::Engine, hits /nurse_andrea/status, asserts

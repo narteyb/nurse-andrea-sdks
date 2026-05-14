@@ -33,3 +33,16 @@ jobs:
 
       - name: Test
         run: npm test --workspace=packages/node
+
+      # Sprint A D5 (GAP-05) — doc-sync. README must reference the
+      # SDK_VERSION constant from src/version.ts. Soft check —
+      # surfaces a workflow warning if missing.
+      - name: Doc-sync — README references current version
+        working-directory: packages/node
+        run: |
+          VERSION=$(grep -E "SDK_VERSION\s*=" src/version.ts | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if grep -qF "$VERSION" README.md; then
+            echo "README.md references version $VERSION ✓"
+          else
+            echo "::warning::README.md does not reference current version $VERSION"
+          fi

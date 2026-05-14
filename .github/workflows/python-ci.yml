@@ -31,3 +31,18 @@ jobs:
       - name: Run tests
         working-directory: packages/python
         run: pytest --tb=short -q
+
+      # Sprint A D5 (GAP-05) — doc-sync. README must reference the
+      # version string in pyproject.toml. This check was scoped here
+      # explicitly because pre-Sprint-A README claimed "Pre-release
+      # 0.1.0" while pyproject.toml declared 1.0.0. Soft check —
+      # surfaces a workflow warning if missing.
+      - name: Doc-sync — README references current version
+        working-directory: packages/python
+        run: |
+          VERSION=$(grep -E '^version\s*=' pyproject.toml | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if grep -qF "$VERSION" README.md; then
+            echo "README.md references version $VERSION ✓"
+          else
+            echo "::warning::README.md does not reference current version $VERSION"
+          fi
