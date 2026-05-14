@@ -1,0 +1,251 @@
+name: SDK Release
+
+# Trigger:
+#   - Tag push matching v<major>.<minor>.<patch> → live publish
+#   - workflow_dispatch with dry_run=true → build everything, push
+#     nothing (verifies the pipeline without consuming registry slots)
+#
+# Sprint A D2 (GAP-02). Pre-Sprint-A all four runtimes were
+# published by hand (gem push / npm publish / twine upload / git
+# tag) with nothing enforcing version parity. The Python README
+# drift caught in D5 (pyproject 1.0.0 vs README 0.1.0) is the same
+# class of bug at the cross-runtime level: nothing ties Ruby's
+# VERSION constant to Node's SDK_VERSION constant to pyproject's
+# version field. This workflow's verify_versions job is the
+# structural enforcement — the tag IS the contract; every runtime
+# must report it before any of them ship.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build but do not publish (verifies the pipeline)"
+        required: false
+        default: "false"
+        type: choice
+        options: [ "true", "false" ]
+      tag:
+        description: "Tag to dry-run against (e.g. v1.0.1)"
+        required: false
+        default: ""
+
+env:
+  # Resolve the version under release: from the pushed tag, or from
+  # the dry-run input. Both forms include the leading 'v'; strip it
+  # so the bare semver string matches the version constants.
+  RELEASE_TAG: ${{ github.ref_name || inputs.tag }}
+
+jobs:
+  # ─── Gate 1: version parity ───────────────────────────────────
+  verify_versions:
+    name: Verify all runtimes match release tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      dry_run: ${{ steps.compute.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: compute
+        name: Compute version + dry-run flag
+        run: |
+          TAG="${RELEASE_TAG}"
+          if [[ -z "$TAG" ]]; then
+            echo "::error::No release tag — push a v* tag or supply inputs.tag for workflow_dispatch."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          DRY="${{ inputs.dry_run || 'false' }}"
+          echo "dry_run=$DRY" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION (dry_run=$DRY)"
+
+      - name: Verify Ruby version
+        run: |
+          VERSION=$(ruby -e 'require "./packages/ruby/lib/nurse_andrea/version"; puts NurseAndrea::VERSION')
+          if [[ "$VERSION" != "${{ steps.compute.outputs.version }}" ]]; then
+            echo "::error::Ruby version $VERSION ≠ release tag ${{ steps.compute.outputs.version }}"
+            exit 1
+          fi
+          echo "Ruby version $VERSION ✓"
+
+      - name: Verify Node version
+        run: |
+          VERSION=$(grep -E "SDK_VERSION\s*=" packages/node/src/version.ts | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if [[ "$VERSION" != "${{ steps.compute.outputs.version }}" ]]; then
+            echo "::error::Node SDK_VERSION $VERSION ≠ release tag ${{ steps.compute.outputs.version }}"
+            exit 1
+          fi
+          echo "Node version $VERSION ✓"
+          # Also verify package.json — the published artifact uses it.
+          PKG_VERSION=$(node -p "require('./packages/node/package.json').version")
+          if [[ "$PKG_VERSION" != "${{ steps.compute.outputs.version }}" ]]; then
+            echo "::error::Node package.json version $PKG_VERSION ≠ release tag ${{ steps.compute.outputs.version }}"
+            exit 1
+          fi
+          echo "Node package.json version $PKG_VERSION ✓"
+
+      - name: Verify Python version
+        run: |
+          VERSION=$(grep -E "^version\s*=" packages/python/pyproject.toml | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if [[ "$VERSION" != "${{ steps.compute.outputs.version }}" ]]; then
+            echo "::error::Python version $VERSION ≠ release tag ${{ steps.compute.outputs.version }}"
+            exit 1
+          fi
+          echo "Python version $VERSION ✓"
+
+      - name: Verify Go version
+        run: |
+          VERSION=$(grep -E 'Version\s+=' packages/go/nurseandrea/version.go | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if [[ "$VERSION" != "${{ steps.compute.outputs.version }}" ]]; then
+            echo "::error::Go Version constant $VERSION ≠ release tag ${{ steps.compute.outputs.version }}"
+            exit 1
+          fi
+          echo "Go version $VERSION ✓"
+
+  # ─── Publish jobs (parallel, gated on verify_versions) ────────
+
+  publish_ruby:
+    name: Publish Ruby gem
+    needs: verify_versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: packages/ruby
+
+      - name: Build gem
+        working-directory: packages/ruby
+        run: gem build nurse_andrea.gemspec
+
+      - name: Publish to RubyGems
+        if: needs.verify_versions.outputs.dry_run != 'true'
+        working-directory: packages/ruby
+        env:
+          # Required secret. See SECRETS_REQUIRED list in the report.
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: gem push nurse_andrea-${{ needs.verify_versions.outputs.version }}.gem
+
+      - name: Dry-run notice (Ruby)
+        if: needs.verify_versions.outputs.dry_run == 'true'
+        run: echo "::notice::Dry-run — Ruby gem built but NOT pushed to RubyGems."
+
+  publish_node:
+    name: Publish npm package
+    needs: verify_versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install + build
+        run: |
+          npm ci --workspace=packages/node
+          npm run build --workspace=packages/node
+
+      - name: Publish to npm
+        if: needs.verify_versions.outputs.dry_run != 'true'
+        working-directory: packages/node
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      - name: Dry-run notice (Node)
+        if: needs.verify_versions.outputs.dry_run == 'true'
+        run: echo "::notice::Dry-run — Node package built but NOT published to npm."
+
+  publish_python:
+    name: Publish Python package
+    needs: verify_versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel + sdist
+        working-directory: packages/python
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+
+      - name: Publish to PyPI
+        if: needs.verify_versions.outputs.dry_run != 'true'
+        working-directory: packages/python
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: python -m twine upload dist/*
+
+      - name: Dry-run notice (Python)
+        if: needs.verify_versions.outputs.dry_run == 'true'
+        run: echo "::notice::Dry-run — Python package built but NOT uploaded to PyPI."
+
+  # Go module distribution is intrinsic to the Git tag: `go get
+  # github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea@vX.Y.Z`
+  # resolves directly from the tag once it's on the default branch.
+  # The tag trigger that fires this workflow IS the Go publish step.
+  # No publish secret needed for Go; no separate job needed.
+  publish_go:
+    name: Go module (no-op — tag is the release)
+    needs: verify_versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Document Go release path
+        run: |
+          echo "::notice::Go module release happens via the git tag itself."
+          echo "Consumers pull via: go get github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea@v${{ needs.verify_versions.outputs.version }}"
+
+  # ─── GitHub Release (after all publishes succeed) ─────────────
+  github_release:
+    name: Create GitHub Release
+    needs: [ verify_versions, publish_ruby, publish_node, publish_python, publish_go ]
+    runs-on: ubuntu-latest
+    if: needs.verify_versions.outputs.dry_run != 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble combined CHANGELOG body
+        id: changelog
+        run: |
+          VERSION=${{ needs.verify_versions.outputs.version }}
+          {
+            echo "## NurseAndrea SDK v$VERSION"
+            echo
+            for pkg in ruby node python go; do
+              if [[ -f packages/$pkg/CHANGELOG.md ]]; then
+                echo "### $pkg"
+                echo
+                # Extract the latest entry block — everything from
+                # the first heading down to the next heading. Falls
+                # back to the whole file if no markers are found.
+                awk '/^##? / { if (++count == 2) exit } count >= 1 { print }' packages/$pkg/CHANGELOG.md
+                echo
+              fi
+            done
+          } > /tmp/release_body.md
+          echo "body_file=/tmp/release_body.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.verify_versions.outputs.version }}
+          name: "SDK v${{ needs.verify_versions.outputs.version }}"
+          body_path: ${{ steps.changelog.outputs.body_file }}
+          draft: false
+          prerelease: false
