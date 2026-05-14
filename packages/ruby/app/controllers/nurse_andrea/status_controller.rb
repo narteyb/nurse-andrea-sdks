@@ -18,7 +18,11 @@ module NurseAndrea
     private
 
     def masked_token
-      token = NurseAndrea.config.api_key.to_s
+      # SDK Sprint A D3 (GAP-03 surfaced this) — pre-1.0 referenced
+      # config.api_key, which now raises MigrationError. The 1.0
+      # field is org_token; the status controller was missed during
+      # the auth-contract rewrite. Host-app fixture smoke caught it.
+      token = NurseAndrea.config.org_token.to_s
       return "not_configured" if token.empty?
       "#{token[0..7]}..."
     end

@@ -48,3 +48,15 @@ jobs:
       - name: bundler-audit
         working-directory: packages/ruby
         run: bundle exec bundler-audit check --update
+
+      # Sprint A D3 (GAP-03) — host-app fixture smoke. Boots a minimal
+      # Rails::Application that depends on the local gem via path:,
+      # mounts NurseAndrea::Engine, hits /nurse_andrea/status, asserts
+      # 200/JSON, and checks the silent-degradation path for missing
+      # org_token. Exit 0 on success.
+      - name: Host-app fixture smoke
+        working-directory: packages/ruby/spec/fixtures/host_app
+        run: |
+          bundle config set --local path 'vendor/bundle'
+          bundle install --jobs 4
+          bundle exec ruby smoke.rb

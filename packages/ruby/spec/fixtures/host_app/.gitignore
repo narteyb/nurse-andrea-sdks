@@ -1,0 +1,7 @@
+# Host-app fixture local-only state. The Gemfile.lock IS gitignored
+# at the SDK Gemfile level (a gem shouldn't pin Rails); same logic
+# here — the fixture should resolve fresh on each CI boot to catch
+# upstream drift.
+.bundle/
+vendor/
+Gemfile.lock

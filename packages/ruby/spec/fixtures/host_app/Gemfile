@@ -1,0 +1,9 @@
+source "https://rubygems.org"
+
+# SDK Sprint A D3 — minimal Rails host that depends on the local gem
+# via path:. CI cds into this directory, runs bundle install, and
+# executes smoke.rb to verify engine mount + status endpoint.
+gem "nurse_andrea", path: "../../.."
+gem "rails", "~> 8.1"
+gem "puma"
+gem "rack-test"
