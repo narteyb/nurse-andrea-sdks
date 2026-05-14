@@ -1,0 +1,50 @@
+name: Ruby SDK CI
+
+on:
+  push:
+    paths:
+      - "packages/ruby/**"
+      - ".github/workflows/ruby-ci.yml"
+  pull_request:
+    paths:
+      - "packages/ruby/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ["3.2", "3.3"]
+        # The gem's Gemfile pins rails "~> 8.1" and the gemspec declares
+        # no Rails version constraint beyond what the Engine/Railtie
+        # integration uses. Single Rails axis until the gem's supported
+        # range broadens — Sprint A audit finding. The brief proposed
+        # 7.1/7.2 but the gemspec/Gemfile target 8.1 only.
+        rails-version: ["8.1"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+          working-directory: packages/ruby
+
+      - name: RSpec
+        working-directory: packages/ruby
+        run: bundle exec rspec
+
+      - name: RuboCop
+        working-directory: packages/ruby
+        run: bundle exec rubocop --parallel
+
+      - name: Brakeman
+        working-directory: packages/ruby
+        run: bundle exec brakeman --no-pager --quiet
+
+      - name: bundler-audit
+        working-directory: packages/ruby
+        run: bundle exec bundler-audit check --update

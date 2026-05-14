@@ -1,0 +1,13 @@
+# SDK Sprint A — Ruby CI baseline config. Uses rubocop-rails-omakase
+# defaults (the same minimal-friction set the broader NurseAndrea Rails
+# app uses) to start. Refine as patterns emerge.
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+AllCops:
+  NewCops: disable
+  TargetRubyVersion: 3.1
+  Exclude:
+    - "vendor/**/*"
+    - "spec/fixtures/**/*"
+    - "integration_tests/**/*"
