@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nurse-andrea"
-version = "1.0.0"
+version = "1.1.0"
 description = "Observability SDK for Python — ships logs and metrics to NurseAndrea"
 readme = "README.md"
 license = {text = "MIT"}

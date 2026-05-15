@@ -48,7 +48,7 @@ describe("NurseAndreaClient", () => {
       expect(h["Authorization"]).toBe("Bearer org_test_token")
       expect(h["X-NurseAndrea-Workspace"]).toBe("checkout")
       expect(h["X-NurseAndrea-Environment"]).toBe("development")
-      expect(h["X-NurseAndrea-SDK"]).toBe("node/1.0.0")
+      expect(h["X-NurseAndrea-SDK"]).toMatch(/^node\/\d+\.\d+\.\d+$/)
     })
   })
 

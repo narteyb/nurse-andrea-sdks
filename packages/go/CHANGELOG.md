@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.1.0 (2026-05-14)
+
+### Breaking (wire-level — host code unchanged)
+- **`LogEntry` JSON wire format aligned to cross-runtime spec.**
+  The `LogEntry` struct's JSON tags now serialize as
+  `occurred_at` / `source` / `payload` instead of the pre-1.1
+  `timestamp` / `service` / `metadata`. Per-entry `sdk_version` and
+  `sdk_language` removed from the entry; they continue to ride on
+  the top-level batch payload. See `docs/sdk/payload-format.md` §3.4
+  for the audit finding and resolution.
+- **`MetricEntry` JSON wire format aligned to cross-runtime spec.**
+  Timestamp serializes as `occurred_at` (was `timestamp`).
+  Per-entry SDK fields removed.
+
+  Host code that calls `EnqueueLog` / `EnqueueMetric` is unchanged.
+  The struct field names are unchanged (Go-idiomatic
+  `Timestamp` / `Service` / `Metadata`); only the JSON tags moved.
+  Code that JSON-marshals an SDK struct directly and compared
+  output strings would need to update the expected keys.
+
+### Fixed (cross-runtime parity — wire spec at docs/sdk/payload-format.md)
+- Deploy requests now attach `X-NurseAndrea-SDK: go/<version>`
+  header. Other runtimes were attaching it on logs/metrics but
+  Go's deploy path was missing it.
+
+### Added
+- Cross-runtime parity test at `packages/go/parity_test.go`
+  exercising header / payload-structure / misconfig dimensions.
+  Misconfig behavior unchanged: `Configure` returns `error` for
+  missing required fields — the Go-idiomatic non-raising form.
+
 ## 1.0.0 (2026-05-06)
 
 ### Breaking

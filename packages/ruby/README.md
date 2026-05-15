@@ -1,7 +1,7 @@
 # NurseAndrea Ruby SDK
 
 The official Ruby gem for [NurseAndrea](https://nurseandrea.io) —
-observability for Rails startups. Version `1.0.0`.
+observability for Rails startups. Version `1.1.0`.
 
 ## Installation
 

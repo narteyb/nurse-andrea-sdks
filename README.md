@@ -6,10 +6,10 @@ Multi-language SDK monorepo for [NurseAndrea](https://nurseandrea.io) observabil
 
 | Package | Language | Version | Registry |
 |---------|----------|---------|----------|
-| `packages/ruby` | Ruby | `1.0.0` | `nurse_andrea` (RubyGems) |
-| `packages/node` | Node.js | `1.0.0` | `nurse-andrea` (npm) |
-| `packages/python` | Python | `1.0.0` | `nurse-andrea` (PyPI) |
-| `packages/go` | Go | `v1.0.0` | `github.com/narteyb/nurse-andrea-sdks/packages/go` |
+| `packages/ruby` | Ruby | `1.1.0` | `nurse_andrea` (RubyGems) |
+| `packages/node` | Node.js | `1.1.0` | `nurse-andrea` (npm) |
+| `packages/python` | Python | `1.1.0` | `nurse-andrea` (PyPI) |
+| `packages/go` | Go | `v1.1.0` | `github.com/narteyb/nurse-andrea-sdks/packages/go` |
 
 ## 1.0 auth contract
 

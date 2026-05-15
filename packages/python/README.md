@@ -1,6 +1,6 @@
 # nurse-andrea (Python)
 
-NurseAndrea observability SDK for Python — version `1.0.0`. Ships
+NurseAndrea observability SDK for Python — version `1.1.0`. Ships
 logs and HTTP metrics from Django, FastAPI, and Flask apps to
 [NurseAndrea](https://nurseandrea.io).
 

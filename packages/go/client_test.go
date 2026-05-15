@@ -1,6 +1,7 @@
 package nurseandrea_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -22,8 +23,10 @@ func TestBuildHeadersEmitsNewAuthContract(t *testing.T) {
 	if got := headers["X-NurseAndrea-Environment"]; got != "development" {
 		t.Errorf("X-NurseAndrea-Environment: got %q", got)
 	}
-	if got := headers["X-NurseAndrea-SDK"]; got != "go/1.0.0" {
-		t.Errorf("X-NurseAndrea-SDK: got %q", got)
+	// Sprint B follow-on — version-agnostic match so the SDK_VERSION
+	// constant can bump without breaking this test.
+	if got := headers["X-NurseAndrea-SDK"]; !regexp.MustCompile(`^go/\d+\.\d+\.\d+$`).MatchString(got) {
+		t.Errorf("X-NurseAndrea-SDK: got %q, want go/<semver>", got)
 	}
 }
 

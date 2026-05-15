@@ -1,3 +1,35 @@
+## [1.1.0] - 2026-05-14
+
+### Fixed (cross-runtime parity — wire spec at docs/sdk/payload-format.md)
+- Status endpoint regression: `GET /nurse_andrea/status` returned
+  500 since the 1.0 release because the controller's `masked_token`
+  helper referenced the pre-1.0 `config.api_key` field, which raises
+  `MigrationError` in 1.0. The endpoint now reads `config.org_token`.
+  Caught by the new Sprint A host-app CI fixture; in-the-wild
+  installs running 1.0 should upgrade to restore the health check.
+
+### Notes
+- No behavior changes in this release for Ruby host apps beyond the
+  status-endpoint fix above. Ruby was already aligned with the
+  cross-runtime payload spec (Sprint B audit confirmed Ruby
+  emits the canonical log and metric field names —
+  `occurred_at` / `source` / `payload` and `occurred_at` —
+  that the spec adopts).
+- Ruby-only optional emissions documented in
+  docs/sdk/payload-format.md and excluded from the parity contract:
+  the `User-Agent: nurse_andrea-ruby/<version>` header, per-log
+  `batch_id` for request tracing, top-level `platform` on metrics
+  (when platform detection is enabled), `component_discoveries`
+  (when service discovery is enabled), `component_metrics` (from
+  the InstrumentationSubscriber).
+
+### Added
+- `NurseAndrea::BootDiagnostics` — Sprint A D6 module that provides
+  per-cause warn messages from the Railtie when configuration is
+  incomplete. Replaces the generic "Configuration incomplete at
+  logger wrap time" warn with messages naming the specific failure
+  mode and the env var or setter to update.
+
 ## [1.0.0] - 2026-05-06
 
 ### Breaking

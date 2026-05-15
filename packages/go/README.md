@@ -3,8 +3,11 @@
 NurseAndrea observability SDK for Go. Ships logs and HTTP metrics from
 net/http, Gin, and Echo applications to [NurseAndrea](https://nurseandrea.io).
 
-> **Note:** Pre-release (`0.1.0`). Published to pkg.go.dev as `v1.0.0`
-> alongside the Ruby gem, Node.js, and Python SDKs in a coordinated release.
+> Published to pkg.go.dev as `v1.1.0` alongside the Ruby gem, Node.js,
+> and Python SDKs in a coordinated release. (Setup snippet below is
+> illustrative; the canonical 1.x setup using `OrgToken` +
+> `WorkspaceSlug` + `Environment` is in the monorepo root README and
+> [`docs/sdk/payload-format.md`](../../docs/sdk/payload-format.md).)
 
 ## Installation
 

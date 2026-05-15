@@ -1,3 +1,41 @@
+## [1.1.0] - 2026-05-14
+
+### Breaking
+- **`configure()` no longer raises `ConfigurationError` on missing /
+  invalid fields.** Pre-1.1 a missing `org_token`, `workspace_slug`,
+  or `environment` (or an unsupported environment value, or a
+  malformed workspace_slug) raised synchronously from `configure()`.
+  As of 1.1 the SDK silent-degrades to align with the cross-runtime
+  misconfiguration contract documented in
+  [`docs/sdk/payload-format.md`](../../docs/sdk/payload-format.md) §6:
+  the validation failure is written to `stderr` as
+  `[NurseAndrea] <reason> — monitoring disabled.`, `_config` is
+  stored in a state where `is_enabled()` returns `False`. No HTTP
+  request reaches the wire while config is invalid.
+
+  **What this means for host apps:**
+  - Apps that relied on `configure()` raising as a startup signal
+    will now boot silently without monitoring. The only signal is
+    the `stderr` warn line.
+  - Verify SDK activation after deploy by checking
+    `nurse_andrea.is_enabled()` programmatically.
+  - `MigrationError` (legacy `api_key` / `token` / `ingest_token`
+    field names) still raises — that's a user-error guard, not a
+    config-state signal. Behavior unchanged.
+  - `NurseAndreaConfig.validate()` (the standalone method, not
+    called by `configure()` anymore) still raises
+    `ConfigurationError` — useful for callers who want fail-fast
+    semantics explicitly.
+
+### Fixed (cross-runtime parity — wire spec at docs/sdk/payload-format.md)
+- Deploy requests now attach the `X-NurseAndrea-SDK: python/<version>`
+  header (Ruby was already attaching it via the shared HttpClient;
+  Python was missing it on the deploy path).
+
+### Added
+- Cross-runtime parity fixture test at `tests/test_parity.py`
+  exercising header / payload-structure / misconfig dimensions.
+
 ## [1.0.0] - 2026-05-06
 
 ### Breaking
