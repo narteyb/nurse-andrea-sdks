@@ -16,7 +16,7 @@ from typing import Optional
 
 import httpx
 
-from .configuration import get_config, is_enabled
+from .configuration import get_config, is_enabled, SDK_LANGUAGE, SDK_VERSION
 
 DESCRIPTION_LIMIT = 500
 
@@ -49,6 +49,11 @@ def deploy(
         "Authorization":             f"Bearer {config.org_token}",
         "X-NurseAndrea-Workspace":   config.workspace_slug,
         "X-NurseAndrea-Environment": config.environment,
+        # Sprint B D2 — added to align with the cross-runtime header
+        # spec (docs/sdk/payload-format.md §5.2). Ruby's deploy went
+        # through the shared HttpClient which already attached this;
+        # Python/Node/Go's deploy paths were missing it.
+        "X-NurseAndrea-SDK":         f"{SDK_LANGUAGE}/{SDK_VERSION}",
     }
     try:
         with httpx.Client(timeout=10.0) as http:

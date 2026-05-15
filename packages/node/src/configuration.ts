@@ -45,24 +45,27 @@ export function configure(options: Partial<NurseAndreaConfig> & Record<string, u
   const environment = (options.environment ?? detectEnvironment()) as Environment
   const host = options.host ?? process.env.NURSE_ANDREA_HOST ?? DEFAULT_HOST
 
-  if (!orgToken) {
-    throw new ConfigurationError("orgToken is required")
-  }
-  if (!workspaceSlug) {
-    throw new ConfigurationError("workspaceSlug is required")
-  }
-  if (!environment) {
-    throw new ConfigurationError("environment is required")
-  }
-  if (!(SUPPORTED_ENVIRONMENTS as readonly string[]).includes(environment)) {
-    throw new ConfigurationError(
-      `environment must be one of ${SUPPORTED_ENVIRONMENTS.join(", ")} (got ${JSON.stringify(environment)})`
-    )
-  }
-  if (!isValidSlug(workspaceSlug)) {
-    throw new ConfigurationError(
-      `workspaceSlug ${JSON.stringify(workspaceSlug)} is invalid. ${SLUG_RULES_HUMAN}`
-    )
+  // Sprint B D2 — misconfig parity per docs/sdk/payload-format.md
+  // §6. Pre-Sprint-B Node alone threw ConfigurationError
+  // synchronously while Ruby/Python/Go silent-degraded. The
+  // cross-runtime contract is "Not raise at SDK boot" — Node now
+  // warns to stderr and clears _config so isEnabled() returns
+  // false. MigrationError (legacy field names above) still throws
+  // — that is a user-error guard, not a config-state signal.
+  const validationFailure =
+    (!orgToken && "orgToken is required") ||
+    (!workspaceSlug && "workspaceSlug is required") ||
+    (!environment && "environment is required") ||
+    (!(SUPPORTED_ENVIRONMENTS as readonly string[]).includes(environment) &&
+      `environment must be one of ${SUPPORTED_ENVIRONMENTS.join(", ")} (got ${JSON.stringify(environment)})`) ||
+    (workspaceSlug && !isValidSlug(workspaceSlug) &&
+      `workspaceSlug ${JSON.stringify(workspaceSlug)} is invalid. ${SLUG_RULES_HUMAN}`) ||
+    null
+
+  if (validationFailure) {
+    process.stderr.write(`[NurseAndrea] ${validationFailure} — monitoring disabled.\n`)
+    _config = null
+    return
   }
 
   _config = {

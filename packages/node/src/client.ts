@@ -164,7 +164,19 @@ class NurseAndreaClient {
       if (metrics.length > 0) {
         const url = metricsUrl()
         const payload: Record<string, unknown> = {
-          metrics,
+          // Sprint B D2 — metric entries serialize with
+          // `occurred_at` (canonical wire key per
+          // docs/sdk/payload-format.md §4.2). Pre-Sprint-B Node
+          // spread the in-memory MetricEntry directly, leaking the
+          // internal `timestamp` property onto the wire and
+          // diverging from Ruby + Python.
+          metrics: metrics.map(m => ({
+            name:        m.name,
+            value:       m.value,
+            unit:        m.unit,
+            occurred_at: m.timestamp,
+            tags:        m.tags,
+          })),
           platform:     detectPlatform(),
           sdk_version:  SDK_VERSION,
           sdk_language: SDK_LANGUAGE,

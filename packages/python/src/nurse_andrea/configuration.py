@@ -96,8 +96,23 @@ def configure(**kwargs) -> NurseAndreaConfig:
         if legacy in kwargs:
             raise MigrationError(_migration_message(legacy))
 
-    _config = NurseAndreaConfig(**kwargs)
-    _config.validate()
+    # Sprint B D2 — misconfig parity per docs/sdk/payload-format.md
+    # §6. Pre-Sprint-B Python (alongside Node) raised
+    # ConfigurationError synchronously while Ruby and Go did not
+    # raise. The cross-runtime contract is "Not raise at SDK boot" —
+    # Python now warns to stderr, stores the partial config, and
+    # is_enabled() returns False so the runtime ingest path
+    # short-circuits. MigrationError (legacy field names above)
+    # still raises — that is a user-error guard, not a config-state
+    # signal.
+    candidate = NurseAndreaConfig(**kwargs)
+    try:
+        candidate.validate()
+    except ConfigurationError as e:
+        sys.stderr.write(f"[NurseAndrea] {e} — monitoring disabled.\n")
+        _config = candidate  # stored; is_valid() returns False
+        return candidate
+    _config = candidate
 
     # Defer imports to avoid circular dependencies.
     from .client import get_client

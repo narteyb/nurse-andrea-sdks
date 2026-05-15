@@ -53,25 +53,43 @@ describe("Configuration", () => {
     })
   })
 
-  describe("validation", () => {
-    it("throws when orgToken is missing", () => {
-      expect(() => configure({ workspaceSlug: "ok", environment: "development" }))
-        .toThrow(/orgToken is required/)
+  describe("validation (Sprint B D2 — silent-degrade parity)", () => {
+    // Pre-Sprint-B these tests asserted Node throws on misconfig.
+    // The cross-runtime parity contract
+    // (docs/sdk/payload-format.md §6) requires silent-degrade
+    // instead, matching Ruby/Python/Go. Each case now asserts:
+    //   - configure() does NOT throw
+    //   - isEnabled() returns false
+    //   - the validation failure was written to stderr as a warn
+    let stderrSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      stderrSpy = jest.spyOn(process.stderr, "write").mockImplementation(() => true)
+    })
+    afterEach(() => stderrSpy.mockRestore())
+
+    it("silent-degrades when orgToken is missing", () => {
+      expect(() => configure({ workspaceSlug: "ok", environment: "development" })).not.toThrow()
+      expect(isEnabled()).toBe(false)
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/orgToken is required/))
     })
 
-    it("throws when workspaceSlug is missing", () => {
-      expect(() => configure({ orgToken: "x", environment: "development" }))
-        .toThrow(/workspaceSlug is required/)
+    it("silent-degrades when workspaceSlug is missing", () => {
+      expect(() => configure({ orgToken: "x", environment: "development" })).not.toThrow()
+      expect(isEnabled()).toBe(false)
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/workspaceSlug is required/))
     })
 
-    it("throws when environment is unsupported", () => {
-      expect(() => configure({ ...validConfig(), environment: "qa" as never }))
-        .toThrow(/environment must be one of/)
+    it("silent-degrades when environment is unsupported", () => {
+      expect(() => configure({ ...validConfig(), environment: "qa" as never })).not.toThrow()
+      expect(isEnabled()).toBe(false)
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/environment must be one of/))
     })
 
-    it("throws when workspaceSlug is invalid format", () => {
-      expect(() => configure({ ...validConfig(), workspaceSlug: "Bad_Slug" }))
-        .toThrow(/workspaceSlug.*invalid.*lowercase/)
+    it("silent-degrades when workspaceSlug is invalid format", () => {
+      expect(() => configure({ ...validConfig(), workspaceSlug: "Bad_Slug" })).not.toThrow()
+      expect(isEnabled()).toBe(false)
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/workspaceSlug.*invalid.*lowercase/))
     })
   })
 

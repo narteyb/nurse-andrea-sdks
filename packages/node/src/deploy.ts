@@ -1,4 +1,5 @@
 import { getConfig, isEnabled } from "./configuration"
+import { SDK_LANGUAGE, SDK_VERSION } from "./version"
 
 const DESCRIPTION_LIMIT = 500
 
@@ -45,6 +46,10 @@ export async function deploy(input: DeployPayload): Promise<boolean> {
         "Authorization":             `Bearer ${config.orgToken}`,
         "X-NurseAndrea-Workspace":   config.workspaceSlug,
         "X-NurseAndrea-Environment": config.environment,
+        // Sprint B D2 — added to align with Ruby's HttpClient
+        // (which already attached this header to every POST,
+        // including deploy). Per docs/sdk/payload-format.md §5.2.
+        "X-NurseAndrea-SDK":         `${SDK_LANGUAGE}/${SDK_VERSION}`,
       },
       body: JSON.stringify(body),
     })

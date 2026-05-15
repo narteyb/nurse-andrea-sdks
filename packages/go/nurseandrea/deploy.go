@@ -73,6 +73,11 @@ func Deploy(version string, opts ...DeployOptions) bool {
 	req.Header.Set("Authorization", "Bearer "+cfg.OrgToken)
 	req.Header.Set("X-NurseAndrea-Workspace", cfg.WorkspaceSlug)
 	req.Header.Set("X-NurseAndrea-Environment", cfg.Environment)
+	// Sprint B D2 — added to align with the cross-runtime header
+	// spec (docs/sdk/payload-format.md §5.2). Ruby's deploy went
+	// through the shared HttpClient which already attached this;
+	// Python/Node/Go's deploy paths were missing it.
+	req.Header.Set("X-NurseAndrea-SDK", SDKLanguage+"/"+Version)
 
 	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {

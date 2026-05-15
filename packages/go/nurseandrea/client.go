@@ -19,25 +19,34 @@ const (
 var rejectionStatuses = map[int]bool{401: true, 403: true, 422: true, 429: true}
 
 // LogEntry represents a single log event to ship.
+//
+// Sprint B D2 — JSON tags aligned to the canonical wire spec
+// (docs/sdk/payload-format.md §3.2). Pre-Sprint-B Go alone emitted
+// `timestamp` / `service` / `metadata` while Ruby/Node/Python all
+// emitted `occurred_at` / `source` / `payload`. The Go struct field
+// names stay Go-idiomatic; only the JSON wire tags changed.
+// Per-entry SDKVersion / SDKLanguage were also dropped — they ride
+// on the top-level batch payload, not on each entry.
 type LogEntry struct {
-	Level       string                 `json:"level"`
-	Message     string                 `json:"message"`
-	Timestamp   string                 `json:"timestamp"`
-	Service     string                 `json:"service"`
-	SDKVersion  string                 `json:"sdk_version"`
-	SDKLanguage string                 `json:"sdk_language"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Level     string                 `json:"level"`
+	Message   string                 `json:"message"`
+	Timestamp string                 `json:"occurred_at"`
+	Service   string                 `json:"source"`
+	Metadata  map[string]interface{} `json:"payload,omitempty"`
 }
 
 // MetricEntry represents a single metric data point.
+//
+// Sprint B D2 — `timestamp` JSON tag aligned to the canonical
+// `occurred_at` wire key (Ruby + Python were already using it; Node
+// + Go diverged). Per-entry SDKVersion / SDKLanguage dropped; they
+// ride on the top-level metrics batch payload.
 type MetricEntry struct {
-	Name        string            `json:"name"`
-	Value       float64           `json:"value"`
-	Unit        string            `json:"unit"`
-	Timestamp   string            `json:"timestamp"`
-	SDKVersion  string            `json:"sdk_version"`
-	SDKLanguage string            `json:"sdk_language"`
-	Tags        map[string]string `json:"tags"`
+	Name      string            `json:"name"`
+	Value     float64           `json:"value"`
+	Unit      string            `json:"unit"`
+	Timestamp string            `json:"occurred_at"`
+	Tags      map[string]string `json:"tags"`
 }
 
 // Client manages batching and flushing of telemetry data.
@@ -207,13 +216,11 @@ func (c *Client) EnqueueLog(level, message string, metadata map[string]interface
 	}
 	cfg := GetConfig()
 	entry := LogEntry{
-		Level:       level,
-		Message:     message,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339Nano),
-		Service:     cfg.ServiceName,
-		SDKVersion:  Version,
-		SDKLanguage: SDKLanguage,
-		Metadata:    metadata,
+		Level:     level,
+		Message:   message,
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Service:   cfg.ServiceName,
+		Metadata:  metadata,
 	}
 	c.mu.Lock()
 	c.logQueue = append(c.logQueue, entry)
@@ -235,13 +242,11 @@ func (c *Client) EnqueueMetric(name string, value float64, unit string, tags map
 	}
 	tags["service"] = cfg.ServiceName
 	entry := MetricEntry{
-		Name:        name,
-		Value:       value,
-		Unit:        unit,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339Nano),
-		SDKVersion:  Version,
-		SDKLanguage: SDKLanguage,
-		Tags:        tags,
+		Name:      name,
+		Value:     value,
+		Unit:      unit,
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Tags:      tags,
 	}
 	c.mu.Lock()
 	c.metricQueue = append(c.metricQueue, entry)
