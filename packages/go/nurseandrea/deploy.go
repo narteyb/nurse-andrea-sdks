@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -78,6 +79,8 @@ func Deploy(version string, opts ...DeployOptions) bool {
 	// through the shared HttpClient which already attached this;
 	// Python/Node/Go's deploy paths were missing it.
 	req.Header.Set("X-NurseAndrea-SDK", SDKLanguage+"/"+Version)
+	// Sprint C — replay-mitigation timestamp.
+	req.Header.Set("X-NurseAndrea-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
 
 	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {

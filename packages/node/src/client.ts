@@ -94,6 +94,10 @@ class NurseAndreaClient {
       "X-NurseAndrea-Workspace":   config.workspaceSlug,
       "X-NurseAndrea-Environment": config.environment,
       "X-NurseAndrea-SDK":         `${SDK_LANGUAGE}/${SDK_VERSION}`,
+      // Sprint C — replay-mitigation timestamp. Server validates
+      // ±5min window when present; SDKs older than 1.2.0 don't send
+      // it and the server accepts gracefully.
+      "X-NurseAndrea-Timestamp":   Math.floor(Date.now() / 1000).toString(),
     }
   }
 

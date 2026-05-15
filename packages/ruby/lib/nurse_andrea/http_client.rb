@@ -53,6 +53,11 @@ module NurseAndrea
         "X-NurseAndrea-Workspace"   => @config.workspace_slug.to_s,
         "X-NurseAndrea-Environment" => @config.environment.to_s,
         "X-NurseAndrea-SDK"         => "#{@config.sdk_language}/#{@config.sdk_version}",
+        # Sprint C — replay-mitigation timestamp. Server validates the
+        # value is within ±5 minutes when the header is present; SDKs
+        # older than 1.2.0 don't send it and the server accepts
+        # gracefully. See docs/sdk/payload-format.md §2 + SECURITY.md.
+        "X-NurseAndrea-Timestamp"   => Time.now.to_i.to_s,
         "User-Agent"                => "nurse_andrea-ruby/#{NurseAndrea::VERSION}"
       }
     end

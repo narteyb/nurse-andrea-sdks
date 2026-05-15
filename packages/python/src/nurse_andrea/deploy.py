@@ -11,6 +11,7 @@ from a deploy notification.
 
 from __future__ import annotations
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -54,6 +55,8 @@ def deploy(
         # through the shared HttpClient which already attached this;
         # Python/Node/Go's deploy paths were missing it.
         "X-NurseAndrea-SDK":         f"{SDK_LANGUAGE}/{SDK_VERSION}",
+        # Sprint C — replay-mitigation timestamp.
+        "X-NurseAndrea-Timestamp":   str(int(time.time())),
     }
     try:
         with httpx.Client(timeout=10.0) as http:

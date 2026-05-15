@@ -12,6 +12,7 @@ passes.
 """
 from __future__ import annotations
 import re
+import time
 
 import httpx
 import pytest
@@ -38,6 +39,15 @@ def _reset():
     nurse_andrea.configuration._reset_for_tests()
 
 
+def _expect_canonical_timestamp(headers):
+    """Sprint C — every outbound POST carries X-NurseAndrea-Timestamp
+    (unix-seconds integer, within ±5min of now)."""
+    raw = headers["x-nurseandrea-timestamp"]
+    assert re.match(r"^\d+$", raw), f"timestamp header missing or malformed: {raw!r}"
+    ts = int(raw)
+    assert abs(ts - int(time.time())) < 60, f"timestamp drift too large: {ts}"
+
+
 # ─── Header parity ─────────────────────────────────────────────
 
 @respx.mock
@@ -56,6 +66,7 @@ def test_ingest_headers_canonical():
     assert headers["x-nurseandrea-workspace"] == "parity-test"
     assert headers["x-nurseandrea-environment"] == "development"
     assert re.match(r"^python/\d+\.\d+\.\d+$", headers["x-nurseandrea-sdk"])
+    _expect_canonical_timestamp(headers)
 
 
 @respx.mock
@@ -73,6 +84,7 @@ def test_metrics_headers_canonical():
     assert headers["x-nurseandrea-workspace"] == "parity-test"
     assert headers["x-nurseandrea-environment"] == "development"
     assert re.match(r"^python/\d+\.\d+\.\d+$", headers["x-nurseandrea-sdk"])
+    _expect_canonical_timestamp(headers)
 
 
 @respx.mock
@@ -89,6 +101,7 @@ def test_deploy_headers_canonical():
     assert headers["x-nurseandrea-environment"] == "development"
     # Sprint B D2 added X-NurseAndrea-SDK to Python's deploy headers.
     assert re.match(r"^python/\d+\.\d+\.\d+$", headers["x-nurseandrea-sdk"])
+    _expect_canonical_timestamp(headers)
 
 
 # ─── Payload structure parity ─────────────────────────────────

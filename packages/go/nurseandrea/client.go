@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -103,6 +104,10 @@ func (c *Client) ResetRejectionState() {
 }
 
 // BuildHeaders returns the new 1.0 auth contract headers.
+//
+// Sprint C added X-NurseAndrea-Timestamp for replay-mitigation; the
+// server validates ±5min window when the header is present and
+// accepts gracefully when absent (older SDKs).
 func (c *Client) BuildHeaders() map[string]string {
 	cfg := GetConfig()
 	return map[string]string{
@@ -111,6 +116,7 @@ func (c *Client) BuildHeaders() map[string]string {
 		"X-NurseAndrea-Workspace":   cfg.WorkspaceSlug,
 		"X-NurseAndrea-Environment": cfg.Environment,
 		"X-NurseAndrea-SDK":         SDKLanguage + "/" + Version,
+		"X-NurseAndrea-Timestamp":   strconv.FormatInt(time.Now().Unix(), 10),
 	}
 }
 

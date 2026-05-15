@@ -31,12 +31,14 @@ application to the configured NurseAndrea endpoint:
   with the git SHA and environment at deploy time.
 
 All traffic is HTTPS POST to the configured `host` (default
-`https://nurseandrea.io`) carrying three headers:
+`https://nurseandrea.io`) carrying these headers:
 
 ```
 Authorization: Bearer <org_token>
-X-NurseAndrea-Workspace: <workspace_slug>
+X-NurseAndrea-Workspace:   <workspace_slug>
 X-NurseAndrea-Environment: <production|staging|development>
+X-NurseAndrea-SDK:         <lang>/<version>
+X-NurseAndrea-Timestamp:   <unix-seconds-integer>   # SDK ≥ 1.2.0
 ```
 
 ### What the org token grants
@@ -85,6 +87,35 @@ the `NURSE_ANDREA_ORG_TOKEN` env var in the host app and redeploy.
 - It does **not** perform any signed-request or HMAC verification.
   Authentication is plain bearer-token; transport security is
   delegated to TLS via the configured `host`.
+
+### Replay-mitigation (GAP-07)
+
+The headers above were extended in two phases tracked under
+internal ticket **GAP-07** ("Replay mitigation"):
+
+- **Phase 1 (pre-1.2.0).** Documentation-only. SECURITY.md called
+  out the absence of replay protection so operators understood
+  what TLS gave them and what it didn't. The bearer token alone
+  was sufficient to ingest; a captured request was replayable
+  indefinitely.
+- **Phase 2 (1.2.0, this Sprint C).** `X-NurseAndrea-Timestamp`
+  is now emitted on every outbound POST by every runtime (Ruby /
+  Node / Python / Go). The server validates the timestamp falls
+  within ±5 minutes of its own clock. Requests outside the
+  window — or with an unparseable timestamp — are rejected with
+  HTTP 401 `error: "timestamp_out_of_window"`. **The server
+  accepts requests without the header** so SDKs older than 1.2.0
+  keep working; this backward-compat acceptance ends with Phase 3.
+  Phase 2 narrows the replay window from "indefinite" to "≤5min",
+  which kills long-lived replay attacks (captured-then-published
+  bearer tokens, log-file leaks aging months) but does **not**
+  defend against an attacker with live request capture inside the
+  window.
+- **Phase 3 (future).** HMAC-signed payload bound to the
+  timestamp + a per-request nonce. Phase 2's timestamp will become
+  a required input to the signature, and "accept-when-absent" goes
+  away. See `docs/sdk/payload-format.md` §7 for the canonical
+  serialization order Phase 3 will sign over.
 
 ## Misconfiguration behavior
 
@@ -135,15 +166,20 @@ known codes include:
 
 ## Cross-runtime parity
 
-Currently, the four runtimes share the same wire-level auth contract
-(Bearer header + `X-NurseAndrea-Workspace` + `X-NurseAndrea-
-Environment`) and the same set of `error_code` strings. There is no
-HMAC-signed envelope, no per-request nonce, and no replay window.
+The four runtimes share the same wire-level auth contract
+(`Authorization` + `X-NurseAndrea-Workspace` +
+`X-NurseAndrea-Environment` + `X-NurseAndrea-SDK` +
+`X-NurseAndrea-Timestamp`), the same set of `error_code` strings,
+and the same canonical payload shape (`docs/sdk/payload-format.md`).
+Cross-runtime parity is enforced by
+`.github/workflows/sdk-parity.yml` — a CI matrix that runs all four
+runtime parity suites on every push.
 
-A cross-runtime parity test (verifying that all four runtimes
-produce byte-identical canonical payloads for a fixed
-`(payload, secret, timestamp, nonce)` tuple) is **not present** and
-is scoped for Sprint B if the SDKs evolve toward signed envelopes.
+There is no HMAC-signed envelope and no per-request nonce yet (GAP-07
+Phase 3). The Phase 2 ±5min timestamp window is the current replay
+defense. The eventual signed-envelope parity test (byte-identical
+canonical payloads for a fixed `(payload, secret, timestamp, nonce)`
+tuple) is the natural Phase 3 deliverable.
 
 ## Responsible disclosure
 

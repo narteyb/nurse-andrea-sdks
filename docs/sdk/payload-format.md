@@ -35,15 +35,41 @@ This spec covers the three live payload types: **logs, metrics, deploy**.
 | `Authorization` | `Bearer <org_token>` | `config.org_token` |
 | `X-NurseAndrea-Workspace` | `<slug>` | `config.workspace_slug` |
 | `X-NurseAndrea-Environment` | `<env>` | `config.environment` ∈ {production, staging, development} |
-| `X-NurseAndrea-SDK` | `<lang>/<version>` | `<sdk_language>/<sdk_version>` — e.g. `ruby/1.0.0`, `node/1.0.0`, `python/1.0.0`, `go/1.0.0` |
+| `X-NurseAndrea-SDK` | `<lang>/<version>` | `<sdk_language>/<sdk_version>` — e.g. `ruby/1.2.0`, `node/1.2.0`, `python/1.2.0`, `go/1.2.0` |
+| `X-NurseAndrea-Timestamp` | `<unix-seconds-integer>` | `int(now.utc.unix)` — set fresh per request |
 
-### 2.1 Ruby-only addition: `User-Agent`
+### 2.1 `X-NurseAndrea-Timestamp` semantics (Sprint C, SDK ≥ 1.2.0)
+
+- **Format.** Decimal integer of seconds since the Unix epoch
+  (UTC). No fractional component, no `+00:00` suffix, no
+  milliseconds. Example: `1747257289`.
+- **Set per request.** Every outbound POST sets the header
+  immediately before sending, not at SDK boot. The server compares
+  it against its own clock at receive time.
+- **Server validation window.** The NurseAndrea server accepts the
+  request when `|server_now - X-NurseAndrea-Timestamp| ≤ 300s`
+  (i.e. ±5 minutes). Outside that window the server rejects with
+  HTTP 401 and `error: "timestamp_out_of_window"`. Unparseable
+  values are rejected the same way.
+- **Backward compatibility.** SDKs built before 1.2.0 do not send
+  this header. When the header is **absent**, the server accepts
+  the request. This is the **explicit GAP-07 Phase 2 contract**:
+  validate-when-present so 1.2.0 SDKs get protection without
+  breaking older installs. Phase 3 (future) tightens this to
+  required-with-HMAC.
+- **Replay-mitigation scope.** The timestamp alone is not a
+  signature — a replayed request from inside the ±5min window
+  still validates. Phase 2 is a stepping stone; the full
+  protection lands in Phase 3 (HMAC-signed payload + timestamp).
+  See `SECURITY.md` for the threat-model rationale.
+
+### 2.2 Ruby-only addition: `User-Agent`
 
 Ruby's `HttpClient` sets `User-Agent: nurse_andrea-ruby/<version>`
-in addition to the five headers above. This is a conventional Ruby
+in addition to the six headers above. This is a conventional Ruby
 HTTP-client header that the other three runtimes do not emit.
 Documented as **Ruby-only optional**. Parity tests do not assert
-its absence/presence — they only assert the five common headers.
+its absence/presence — they only assert the six common headers.
 
 ## 3. Payload type: Logs
 
@@ -239,9 +265,11 @@ within a JSON object is not part of the wire contract (HTTP servers
 parse objects unordered).
 
 This section documents the **reference field order** for future
-signing work (Sprint C+). When request signing lands and payloads
-need to be canonicalized before HMAC, this order is what every
-runtime sorts to.
+signing work (GAP-07 Phase 3). When request signing lands and
+payloads need to be canonicalized before HMAC, this order is what
+every runtime sorts to. Sprint C (Phase 2) added the timestamp
+header (see §2.1) as the input the signature will eventually
+bind to.
 
 ### 7.1 Top-level (any payload type)
 

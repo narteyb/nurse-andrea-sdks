@@ -50,6 +50,8 @@ export async function deploy(input: DeployPayload): Promise<boolean> {
         // (which already attached this header to every POST,
         // including deploy). Per docs/sdk/payload-format.md §5.2.
         "X-NurseAndrea-SDK":         `${SDK_LANGUAGE}/${SDK_VERSION}`,
+        // Sprint C — replay-mitigation timestamp.
+        "X-NurseAndrea-Timestamp":   Math.floor(Date.now() / 1000).toString(),
       },
       body: JSON.stringify(body),
     })

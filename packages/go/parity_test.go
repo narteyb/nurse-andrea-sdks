@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -137,6 +138,21 @@ func checkCanonicalHeaders(t *testing.T, r *http.Request, lang string) {
 	matched, _ := regexp.MatchString(`^`+lang+`/\d+\.\d+\.\d+$`, sdk)
 	if !matched {
 		t.Errorf("X-NurseAndrea-SDK: got %q, expected %s/<semver>", sdk, lang)
+	}
+	// Sprint C — every outbound POST carries X-NurseAndrea-Timestamp
+	// (unix-seconds integer, within ±5min of now).
+	raw := r.Header.Get("X-NurseAndrea-Timestamp")
+	ts, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		t.Errorf("X-NurseAndrea-Timestamp: got %q, expected unix-seconds integer", raw)
+		return
+	}
+	drift := ts - time.Now().Unix()
+	if drift < 0 {
+		drift = -drift
+	}
+	if drift > 60 {
+		t.Errorf("X-NurseAndrea-Timestamp drift: %ds (got %d, now %d)", drift, ts, time.Now().Unix())
 	}
 }
 

@@ -28,8 +28,21 @@ RSpec.describe "NurseAndrea SDK parity (Ruby)" do
     end
   end
 
+  # Sprint C — every outbound POST also carries
+  # X-NurseAndrea-Timestamp (unix-seconds integer, within ±5min of
+  # now). Server validates the window when the header is present;
+  # SDKs older than 1.2.0 don't send it and the server accepts
+  # gracefully.
+  def expect_canonical_timestamp(req)
+    raw = req.headers["X-Nurseandrea-Timestamp"]
+    expect(raw).to match(/\A[0-9]+\z/), "timestamp header missing or malformed: #{raw.inspect}"
+    ts = raw.to_i
+    expect((ts - Time.now.to_i).abs).to be < 60,
+      "timestamp drift too large: #{ts} vs now #{Time.now.to_i}"
+  end
+
   describe "Header parity" do
-    it "emits the 5 canonical headers on /api/v1/ingest" do
+    it "emits the 6 canonical headers on /api/v1/ingest" do
       configure_valid!
       stub = stub_request(:post, "http://parity.test/api/v1/ingest").to_return(status: 200, body: "{}")
 
@@ -45,9 +58,10 @@ RSpec.describe "NurseAndrea SDK parity (Ruby)" do
       expect(req.headers["X-Nurseandrea-Workspace"]).to eq("parity-test")
       expect(req.headers["X-Nurseandrea-Environment"]).to eq("development")
       expect(req.headers["X-Nurseandrea-Sdk"]).to match(%r{\Aruby/[0-9]+\.[0-9]+\.[0-9]+\z})
+      expect_canonical_timestamp(req)
     end
 
-    it "emits the 5 canonical headers on /api/v1/metrics" do
+    it "emits the 6 canonical headers on /api/v1/metrics" do
       configure_valid!
       stub = stub_request(:post, "http://parity.test/api/v1/metrics").to_return(status: 200, body: "{}")
 
@@ -63,9 +77,10 @@ RSpec.describe "NurseAndrea SDK parity (Ruby)" do
       expect(req.headers["X-Nurseandrea-Workspace"]).to eq("parity-test")
       expect(req.headers["X-Nurseandrea-Environment"]).to eq("development")
       expect(req.headers["X-Nurseandrea-Sdk"]).to match(%r{\Aruby/[0-9]+\.[0-9]+\.[0-9]+\z})
+      expect_canonical_timestamp(req)
     end
 
-    it "emits the 5 canonical headers on /api/v1/deploy" do
+    it "emits the 6 canonical headers on /api/v1/deploy" do
       configure_valid!
       stub = stub_request(:post, "http://parity.test/api/v1/deploy").to_return(status: 200, body: "{}")
 
@@ -77,6 +92,7 @@ RSpec.describe "NurseAndrea SDK parity (Ruby)" do
       expect(req.headers["X-Nurseandrea-Workspace"]).to eq("parity-test")
       expect(req.headers["X-Nurseandrea-Environment"]).to eq("development")
       expect(req.headers["X-Nurseandrea-Sdk"]).to match(%r{\Aruby/[0-9]+\.[0-9]+\.[0-9]+\z})
+      expect_canonical_timestamp(req)
     end
   end
 

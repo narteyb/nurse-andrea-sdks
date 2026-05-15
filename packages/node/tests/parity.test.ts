@@ -62,8 +62,18 @@ describe("NurseAndrea SDK parity (Node)", () => {
     capture.restore()
   })
 
+  // Sprint C — every outbound POST also carries
+  // X-NurseAndrea-Timestamp (unix-seconds integer within ±5min).
+  const expectCanonicalTimestamp = (headers: Record<string, string>) => {
+    const raw = headers["X-NurseAndrea-Timestamp"]
+    expect(raw).toMatch(/^\d+$/)
+    const ts = parseInt(raw, 10)
+    const now = Math.floor(Date.now() / 1000)
+    expect(Math.abs(ts - now)).toBeLessThan(60)
+  }
+
   describe("Header parity", () => {
-    it("emits the 5 canonical headers on /api/v1/ingest", async () => {
+    it("emits the 6 canonical headers on /api/v1/ingest", async () => {
       client.enqueueLog({ level: "info", message: "x" })
       await (client as any).flush()
       const req = capture.captured.find(r => r.url.endsWith("/api/v1/ingest"))
@@ -73,9 +83,10 @@ describe("NurseAndrea SDK parity (Node)", () => {
       expect(req!.headers["X-NurseAndrea-Workspace"]).toBe("parity-test")
       expect(req!.headers["X-NurseAndrea-Environment"]).toBe("development")
       expect(req!.headers["X-NurseAndrea-SDK"]).toBe(`${SDK_LANGUAGE}/${SDK_VERSION}`)
+      expectCanonicalTimestamp(req!.headers)
     })
 
-    it("emits the 5 canonical headers on /api/v1/metrics", async () => {
+    it("emits the 6 canonical headers on /api/v1/metrics", async () => {
       client.enqueueMetric({ name: "process.memory.rss", value: 1, unit: "bytes" })
       await (client as any).flush()
       const req = capture.captured.find(r => r.url.endsWith("/api/v1/metrics"))
@@ -84,9 +95,10 @@ describe("NurseAndrea SDK parity (Node)", () => {
       expect(req!.headers["X-NurseAndrea-Workspace"]).toBe("parity-test")
       expect(req!.headers["X-NurseAndrea-Environment"]).toBe("development")
       expect(req!.headers["X-NurseAndrea-SDK"]).toBe(`${SDK_LANGUAGE}/${SDK_VERSION}`)
+      expectCanonicalTimestamp(req!.headers)
     })
 
-    it("emits the 5 canonical headers on /api/v1/deploy", async () => {
+    it("emits the 6 canonical headers on /api/v1/deploy", async () => {
       await deploy({ version: "1.0.0" })
       const req = capture.captured.find(r => r.url.endsWith("/api/v1/deploy"))
       expect(req).toBeDefined()
@@ -95,6 +107,7 @@ describe("NurseAndrea SDK parity (Node)", () => {
       expect(req!.headers["X-NurseAndrea-Workspace"]).toBe("parity-test")
       expect(req!.headers["X-NurseAndrea-Environment"]).toBe("development")
       expect(req!.headers["X-NurseAndrea-SDK"]).toBe(`${SDK_LANGUAGE}/${SDK_VERSION}`)
+      expectCanonicalTimestamp(req!.headers)
     })
   })
 
