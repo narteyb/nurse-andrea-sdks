@@ -1,3 +1,25 @@
+## [1.2.0] - 2026-05-14
+
+### Added
+- **`X-NurseAndrea-Timestamp` header on every outbound POST.** Set
+  to `str(int(time.time()))` (unix-seconds integer) on logs,
+  metrics, and deploy. Server-side window validation (±5 minutes)
+  lands in the matching NurseAndrea Rails release; requests outside
+  the window are rejected with HTTP 401
+  `error: "timestamp_out_of_window"`.
+  This is GAP-07 Phase 2 of the replay-mitigation work — see
+  `SECURITY.md` and `docs/sdk/payload-format.md` §2.1 for the
+  threat-model rationale and Phase 3 (HMAC) roadmap.
+- Parity test extended to assert the timestamp header is present
+  and within drift on logs / metrics / deploy.
+
+### Notes
+- **Backward compatibility.** Servers running the matching Rails
+  release accept requests **without** the timestamp header (older
+  SDKs), so upgrading the SDK without coordinating the server
+  upgrade is safe. The accept-when-absent behavior goes away in
+  Phase 3.
+
 ## [1.1.0] - 2026-05-14
 
 ### Breaking
