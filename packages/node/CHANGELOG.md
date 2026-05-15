@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.0] - 2026-05-14
+
+### Notes
+- **No functional changes in the Node SDK this release.** Version
+  bumped from 1.2.0 → 1.3.0 to stay aligned with the coordinated
+  cross-runtime release tag scheme — the Ruby gem shipped the
+  Rack-compatible core refactor (Sprint D D1, GAP-09) in this
+  release and the four runtimes ship under a single `v<X.Y.Z>` tag
+  enforced by `.github/workflows/release.yml`'s `verify_versions`
+  job.
+
 ## [1.2.0] - 2026-05-14
 
 ### Added

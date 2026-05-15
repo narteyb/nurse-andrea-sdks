@@ -3,7 +3,7 @@
 NurseAndrea observability SDK for Node.js. Ships logs and HTTP metrics to
 [NurseAndrea](https://nurseandrea.io) from Express, Fastify, and NestJS apps.
 
-> Published to npm as `v1.2.0` alongside Ruby, Python, and Go SDKs
+> Published to npm as `v1.3.0` alongside Ruby, Python, and Go SDKs
 > in a coordinated release. (Setup snippet below is illustrative; the
 > canonical 1.x setup using `orgToken` + `workspaceSlug` +
 > `environment` is in the monorepo root README and

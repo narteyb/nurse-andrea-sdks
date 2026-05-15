@@ -1,3 +1,33 @@
+## [1.3.0] - 2026-05-14
+
+### Added — Rack-compatible core (GAP-09, Sprint D D1)
+- The gem now loads cleanly in non-Rails Ruby processes (Sinatra,
+  plain Rack, background workers, CLI tools). Previously
+  `require "nurse_andrea"` raised `LoadError` outside a Rails
+  context because `job_instrumentation.rb`'s top-level
+  `require "active_support/concern"` failed without ActiveSupport
+  installed.
+- Public surface available without Rails:
+  `NurseAndrea.configure`, `NurseAndrea.config.valid?`,
+  `NurseAndrea::LogShipper.instance`,
+  `NurseAndrea::MetricsShipper.instance`,
+  `NurseAndrea::MetricsMiddleware` (Rack middleware),
+  `NurseAndrea.deploy(...)`. See the README's "Non-Rails usage"
+  section for the minimal Sinatra / Rack setup.
+- New spec at `spec/nurse_andrea/rack_compat_spec.rb` spawns a
+  subprocess with the Bundler env stripped and asserts the gem
+  loads, configures, and exposes the shippers without pulling in
+  Rails or ActiveSupport. Standing rule #12: load behavior is now
+  asserted by a spec, not by manual verification.
+
+### Internal
+- `lib/nurse_andrea.rb` now separates Rack-compatible requires
+  (unconditional) from Rails-only requires (guarded by
+  `defined?(ActiveSupport::Concern)` / `defined?(Rails::Railtie)` /
+  `defined?(Rails::Engine)`). No changes to the internal
+  implementation of any individual file — only their require's
+  load-time position.
+
 ## [1.2.0] - 2026-05-14
 
 ### Added

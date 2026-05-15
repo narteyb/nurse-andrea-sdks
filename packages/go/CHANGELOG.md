@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0 (2026-05-14)
+
+### Added — Module path and versioning documentation (GAP-11, Sprint D D2)
+- `packages/go/README.md` gains a "Module path and versioning"
+  section that documents the current nested module path
+  (`github.com/narteyb/nurse-andrea-sdks/packages/go/nurseandrea`),
+  why it's nested, and the two v2-migration options when the next
+  major version arrives: appending `/v2` to the existing path
+  (Go-canonical) versus moving the module to a shorter flat path
+  (`github.com/narteyb/nurse-andrea-go`). No action at v1.x; the
+  section exists so the v2 decision is informed when it lands.
+
+### Notes
+- **No code changes in the Go SDK this release.** Documentation
+  addition + coordinated 1.2.0 → 1.3.0 version bump to stay aligned
+  with the cross-runtime release tag scheme enforced by
+  `.github/workflows/release.yml`'s `verify_versions` job.
+
 ## 1.2.0 (2026-05-14)
 
 ### Added
